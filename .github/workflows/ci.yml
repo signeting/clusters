@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.6
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq shellcheck
+          go install github.com/mikefarah/yq/v4@v4.43.1
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Shellcheck
+        run: shellcheck scripts/*.sh
+
+      - name: Terraform fmt
+        run: |
+          terraform -chdir=platforms/aws/terraform/bootstrap fmt -check
+          terraform -chdir=platforms/aws/terraform/prereqs fmt -check
+
+      - name: Terraform validate
+        run: |
+          terraform -chdir=platforms/aws/terraform/bootstrap init -backend=false
+          terraform -chdir=platforms/aws/terraform/bootstrap validate
+          terraform -chdir=platforms/aws/terraform/prereqs init -backend=false
+          terraform -chdir=platforms/aws/terraform/prereqs validate
+
+      - name: Schema validation
+        run: scripts/validate.sh _example/aws-single-az
