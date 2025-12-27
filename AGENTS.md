@@ -66,6 +66,7 @@ Purpose: Guide AI/dev assistants working in this repo (Day-0 cluster provisionin
 - If `schemas/cluster.schema.json` changes, update example clusters and templates so they stay valid.
 - If scripts or Make targets change, update `README.md` and `PLAN.md` where they describe the workflow or contract.
 - If GitOps handoff logic changes, sanity-check against `bitiq-io/gitops` bootstrap expectations.
+- For Mermaid diagrams in `README.md`, quote any label that includes punctuation or special characters (e.g., `/`, `+`, `(`, `)`, `:`) to keep GitHub rendering happy.
 
 ## Validation and Expected Checks
 
