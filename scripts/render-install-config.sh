@@ -73,8 +73,13 @@ sed_args=(
   -e "s|__AWS_ZONES__|$(escape_sed "${zones_json}")|g"
   -e "s|__PULL_SECRET__|$(escape_sed "${pull_secret}")|g"
   -e "s|__SSH_PUB_KEY__|$(escape_sed "${ssh_pub}")|g"
-  -e "s|__HOSTED_ZONE_ID__|$(escape_sed "${hosted_zone_id}")|g"
 )
+
+if [[ -n "${hosted_zone_id}" ]]; then
+  sed_args+=(-e "s|__HOSTED_ZONE_ID__|$(escape_sed "${hosted_zone_id}")|g")
+else
+  sed_args+=(-e "/__HOSTED_ZONE_ID__/d")
+fi
 
 mkdir -p "${work_dir}"
 umask 077
