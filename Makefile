@@ -1,7 +1,7 @@
 SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := help
 
-.PHONY: help preflight validate tf-bootstrap tf-apply cluster-create cluster-destroy bootstrap-gitops verify
+.PHONY: help preflight validate tf-bootstrap tf-apply cco-manual-sts cluster-create cluster-destroy bootstrap-gitops verify
 
 help:
 	@printf "Usage: make <target> CLUSTER=<name>\n\n"
@@ -10,6 +10,7 @@ help:
 	@printf "  validate         Validate cluster.yaml against the schema\n"
 	@printf "  tf-bootstrap     One-time Terraform backend bootstrap\n"
 	@printf "  tf-apply         Per-cluster Terraform prereqs (DNS/IAM)\n"
+	@printf "  cco-manual-sts   Prepare AWS STS IAM/OIDC resources (manual CCO)\n"
 	@printf "  cluster-create   Create cluster via openshift-install\n"
 	@printf "  cluster-destroy  Destroy cluster via openshift-install\n"
 	@printf "  bootstrap-gitops Run GitOps bootstrap on the cluster\n"
@@ -28,6 +29,9 @@ tf-bootstrap:
 
 tf-apply:
 	scripts/tf-apply.sh
+
+cco-manual-sts:
+	scripts/cco-manual-sts.sh
 
 cluster-create:
 	scripts/cluster-create.sh

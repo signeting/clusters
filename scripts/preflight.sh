@@ -42,9 +42,14 @@ region="$(yq -r '.platform.region' "${cluster_yaml}")"
 zones="$(yq -r '.platform.zones | join(",")' "${cluster_yaml}")"
 base_domain="$(yq -r '.dns.base_domain' "${cluster_yaml}")"
 aws_profile="$(yq -r '.credentials.aws_profile // ""' "${cluster_yaml}")"
+cco_mode="$(yq -r '.credentials.cco_mode' "${cluster_yaml}")"
 gitops_env="$(yq -r '.gitops.env' "${cluster_yaml}")"
 gitops_repo="$(yq -r '.gitops.repo_url' "${cluster_yaml}")"
 gitops_ref="$(yq -r '.gitops.repo_ref' "${cluster_yaml}")"
+
+if [[ "${cco_mode}" == "manual-sts" ]]; then
+  command -v ccoctl >/dev/null 2>&1 || fail "Missing required tool for manual-sts: ccoctl"
+fi
 
 if [[ "${name}" != "${CLUSTER}" ]]; then
   log "WARN: cluster.yaml name (${name}) does not match directory (${CLUSTER})"

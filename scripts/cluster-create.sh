@@ -25,14 +25,22 @@ fi
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "${script_dir}/.." && pwd)"
 cluster_dir="${repo_root}/clusters/${CLUSTER}"
+cluster_yaml="${cluster_dir}/cluster.yaml"
 work_dir="${cluster_dir}/.work"
 installer_dir="${work_dir}/installer"
 
 "${script_dir}/preflight.sh" "${CLUSTER}"
 "${script_dir}/render-install-config.sh" "${CLUSTER}"
 
+cco_mode="$(yq -r '.credentials.cco_mode' "${cluster_yaml}")"
+if [[ "${cco_mode}" == "manual-sts" && ! -d "${installer_dir}/manifests" ]]; then
+  fail "manual-sts requires manifests in ${installer_dir}/manifests (run scripts/cco-manual-sts.sh first)"
+fi
+
 if [[ -d "${installer_dir}" && -n "$(ls -A "${installer_dir}")" ]]; then
-  if [[ "${ALLOW_INSTALLER_REUSE:-}" != "1" && "${ALLOW_INSTALLER_REUSE:-}" != "true" ]]; then
+  if [[ "${cco_mode}" == "manual-sts" ]]; then
+    log "Reusing installer dir for manual-sts: ${installer_dir}"
+  elif [[ "${ALLOW_INSTALLER_REUSE:-}" != "1" && "${ALLOW_INSTALLER_REUSE:-}" != "true" ]]; then
     fail "Installer dir not empty: ${installer_dir} (set ALLOW_INSTALLER_REUSE=1 to reuse)"
   fi
 fi

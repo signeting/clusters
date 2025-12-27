@@ -49,6 +49,7 @@ instance_type_compute="$(yq -r '.openshift.instance_type_compute' "${cluster_yam
 instance_type_control_plane="$(yq -r '.openshift.instance_type_control_plane' "${cluster_yaml}")"
 region="$(yq -r '.platform.region' "${cluster_yaml}")"
 zones_json="$(yq -o=json '.platform.zones' "${cluster_yaml}" | tr -d '\n')"
+cco_mode="$(yq -r '.credentials.cco_mode' "${cluster_yaml}")"
 
 pull_secret="$(tr -d '\n' < "${secrets_dir}/pull-secret.json")"
 ssh_pub="$(tr -d '\n' < "${secrets_dir}/ssh.pub")"
@@ -74,6 +75,12 @@ sed_args=(
   -e "s|__PULL_SECRET__|$(escape_sed "${pull_secret}")|g"
   -e "s|__SSH_PUB_KEY__|$(escape_sed "${ssh_pub}")|g"
 )
+
+if [[ "${cco_mode}" == "manual-sts" ]]; then
+  sed_args+=(-e "s|__CREDENTIALS_MODE__|Manual|g")
+else
+  sed_args+=(-e "/__CREDENTIALS_MODE__/d")
+fi
 
 if [[ -n "${hosted_zone_id}" ]]; then
   sed_args+=(-e "s|__HOSTED_ZONE_ID__|$(escape_sed "${hosted_zone_id}")|g")
