@@ -23,6 +23,15 @@ This plan is written so an AI coding agent can implement it end-to-end with mini
 
 ---
 
+## Current status
+
+- Repo skeleton is in place (directories, `.gitignore`, Makefile, script stubs).
+- Schema + example cluster template are in place (`schemas/cluster.schema.json`, `clusters/_example/...`).
+- Preflight is in place (`scripts/preflight.sh`) with tool checks, schema validation, account guardrail, and secrets checks.
+- Next focus: Milestone 3 (Terraform roots) and Milestone 4 (render/install).
+
+---
+
 ## Repo conventions
 
 ### Source of truth
@@ -89,6 +98,8 @@ Also gitignored.
 **DoD:**
 - `git status` stays clean after running `make preflight` (once implemented).
 
+**Status:** done
+
 ---
 
 ### Task 0.2 — Makefile with stable UX
@@ -106,6 +117,8 @@ Also gitignored.
 - `make help` prints target list + required vars.
 - Every target delegates to a script (`scripts/*.sh`) rather than embedding logic.
 
+**Status:** done
+
 ---
 
 ## Milestone 1 — Cluster contract + validation
@@ -120,10 +133,13 @@ Also gitignored.
   - `dns.base_domain`
   - `openshift.version`, replicas, instance types
   - `credentials.aws_profile` (optional) and `credentials.cco_mode`
-  - `gitops.repo_url`, `gitops.repo_ref`, `gitops.env`
+  - `gitops.repo_url`, `gitops.repo_ref`, `gitops.env` (enum: `local`, `sno`, `prod`)
+- `scripts/validate.sh` uses `yq` + `jv` (auto-installs via `scripts/ensure-jv.sh`).
 
 **DoD:**
 - `scripts/validate.sh <cluster>` returns non-zero with clear errors on invalid YAML.
+
+**Status:** done
 
 ---
 
@@ -137,6 +153,8 @@ Also gitignored.
 **DoD:**
 - `cp -r clusters/_example/aws-single-az clusters/test` is a working start.
 
+**Status:** done
+
 ---
 
 ## Milestone 2 — Guardrails (account correctness + tool checks)
@@ -148,7 +166,8 @@ Also gitignored.
 - Inputs: `CLUSTER` name
 - Steps:
   - Validate YAML (call `scripts/validate.sh`)
-  - Check required commands: `aws terraform oc openshift-install jq yq`
+  - Check required commands: `aws terraform oc openshift-install helm jq yq go`
+  - Ensure `jv` is available (install via `scripts/ensure-jv.sh` if missing)
   - Load `platform.account_id` and `credentials.aws_profile` from cluster.yaml
   - Run `aws sts get-caller-identity` under that profile and compare account ID
   - Ensure secrets exist in `secrets/<cluster>/`
@@ -156,6 +175,8 @@ Also gitignored.
 
 **DoD:**
 - Using a personal account profile causes a hard fail *before* any writes.
+
+**Status:** done
 
 ---
 
@@ -168,6 +189,7 @@ Also gitignored.
 
 **Work:**
 - Directory: `platforms/aws/terraform/bootstrap/`
+- Provider guardrail: `allowed_account_ids = [platform.account_id]` so Terraform fails fast in the wrong account.
 - Creates:
   - S3 bucket with:
     - versioning enabled
@@ -186,6 +208,7 @@ Also gitignored.
 **Work:**
 - Directory: `platforms/aws/terraform/prereqs/`
 - Backend: S3 using the bootstrap bucket and `use_lockfile = true`
+- Provider guardrail: `allowed_account_ids = [platform.account_id]` to block wrong-account runs.
 - Resources:
   - Route53 hosted zone (optional create vs use existing)
   - IAM role for provisioning (prefer assume-role over static access keys)
@@ -258,18 +281,22 @@ Also gitignored.
 
 **Work:**
 - Requires kubeconfig output
+- Ensure `helm` is installed (the gitops bootstrap script requires it).
+- Set `KUBECONFIG=clusters/<cluster>/.work/kubeconfig` for the bootstrap call.
 - Compute `BASE_DOMAIN` for gitops bootstrap:
   - `apps.<clusterName>.<dns.base_domain>` (match your OpenShift route convention)
 - Clone `gitops.repo_url` at `gitops.repo_ref` into `clusters/<cluster>/.work/gitops-src/`
 - Run:
-  - `ENV=<gitops.env> BASE_DOMAIN=<computed> ./scripts/bootstrap.sh`
+  - `ENV=<gitops.env> BASE_DOMAIN=<computed> TARGET_REV=<gitops.repo_ref> GIT_REPO_URL=<gitops.repo_url> ./scripts/bootstrap.sh`
 - Capture:
   - git commit SHA used
   - bootstrap timestamp
+  - write a trace file under `clusters/<cluster>/.work/` (e.g., `gitops-bootstrap.json`)
 
 **DoD:**
 - `oc get ns openshift-gitops` exists after bootstrap (or equivalent per bootstrap script behavior).
 - Argo resources exist and begin syncing.
+- Trace file exists under `clusters/<cluster>/.work/` with repo URL/ref/SHA and timestamp.
 
 ---
 
