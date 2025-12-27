@@ -1,0 +1,11 @@
+.DS_Store
+
+# Secrets and generated outputs
+secrets/
+clusters/**/.work/
+
+# Terraform/OpenTofu state and caches
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.*
+**/.terraform.lock.hcl
