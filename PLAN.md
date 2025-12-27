@@ -31,7 +31,8 @@ This plan is written so an AI coding agent can implement it end-to-end with mini
 - Terraform bootstrap/prereqs roots + scripts are in place (`platforms/aws/terraform/...`, `scripts/tf-*.sh`).
 - Install-config renderer is in place (`scripts/render-install-config.sh`).
 - Cluster create/destroy, GitOps bootstrap, and verify scripts are in place (`scripts/cluster-*.sh`, `scripts/bootstrap-gitops.sh`, `scripts/verify.sh`).
-- Next focus: Milestone 6.2 (docs) and Milestone 7 (CI hygiene).
+- Docs runbooks and CI workflow are in place (`docs/*.md`, `.github/workflows/ci.yml`).
+- Next focus: Milestone 8 (credentials hardening).
 
 ---
 
@@ -349,6 +350,8 @@ Also gitignored.
 **DoD:**
 - Human can follow docs to recover from the top 5 failure modes without Slack archaeology.
 
+**Status:** done
+
 ---
 
 ## Milestone 7 — CI hygiene (recommended)
@@ -364,6 +367,8 @@ Also gitignored.
 
 **DoD:**
 - PRs fail fast on formatting/validation errors.
+
+**Status:** done
 
 ---
 
