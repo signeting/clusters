@@ -123,7 +123,7 @@ oc get nodes
 
 ```mermaid
 flowchart LR
-  subgraph C[clusters repo (Day-0 + Day-1)]
+  subgraph C["clusters repo (Day-0 + Day-1)"]
     A[cluster.yaml] --> P[preflight (account/tool checks)]
     A --> T[terraform prereqs<br/>DNS + IAM + state]
     A --> R[render install-config.yaml]
@@ -131,7 +131,7 @@ flowchart LR
     I --> B[bootstrap GitOps]
   end
 
-  subgraph G[bitiq-io/gitops (Day-1/Day-2)]
+  subgraph G["bitiq-io/gitops (Day-1/Day-2)"]
     S[./scripts/bootstrap.sh<br/>ENV + BASE_DOMAIN] --> AR[Argo CD apps/ApplicationSets]
     AR --> O[Operators + platform services]
     AR --> W[Signet workloads]
@@ -144,11 +144,11 @@ flowchart LR
 
 ```mermaid
 flowchart TB
-  subgraph Portable[Portable layers (should move clouds unchanged)]
+  subgraph Portable["Portable layers (should move clouds unchanged)"]
     K[OpenShift API + platform features] --> X[GitOps repo (apps/operators/policies)]
   end
 
-  subgraph Cloud[Disposable cloud layer (rewrite per cloud)]
+  subgraph Cloud["Disposable cloud layer (rewrite per cloud)"]
     AWS[AWS: IAM + Route53 + state backend]
     AZ[Azure: Entra ID + DNS + state backend]
     GCP[GCP: IAM + Cloud DNS + state backend]
