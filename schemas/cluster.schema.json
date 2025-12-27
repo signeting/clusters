@@ -1,0 +1,141 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Signet cluster schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "name",
+    "env",
+    "platform",
+    "dns",
+    "openshift",
+    "credentials",
+    "gitops"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "env": {
+      "type": "string",
+      "minLength": 1
+    },
+    "platform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "account_id", "region", "zones"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["aws"]
+        },
+        "account_id": {
+          "type": "string",
+          "pattern": "^[0-9]{12}$"
+        },
+        "region": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "zones": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[a-z0-9-]+$"
+          }
+        }
+      }
+    },
+    "dns": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["base_domain"],
+      "properties": {
+        "base_domain": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z0-9.-]+$"
+        },
+        "hosted_zone_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^Z[A-Z0-9]+$"
+        }
+      }
+    },
+    "openshift": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "control_plane_replicas",
+        "compute_replicas",
+        "instance_type_control_plane",
+        "instance_type_compute"
+      ],
+      "properties": {
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$"
+        },
+        "control_plane_replicas": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "compute_replicas": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "instance_type_control_plane": {
+          "type": "string",
+          "minLength": 1
+        },
+        "instance_type_compute": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "credentials": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cco_mode"],
+      "properties": {
+        "aws_profile": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cco_mode": {
+          "type": "string",
+          "enum": ["mint", "manual-sts"]
+        }
+      }
+    },
+    "gitops": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repo_url", "repo_ref", "env"],
+      "properties": {
+        "repo_url": {
+          "type": "string",
+          "minLength": 1,
+          "format": "uri"
+        },
+        "repo_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "env": {
+          "type": "string",
+          "enum": ["local", "sno", "prod"]
+        }
+      }
+    }
+  }
+}

@@ -31,8 +31,12 @@ Local tools:
 - `terraform` (or OpenTofu, but start with Terraform for compatibility)
 - `oc`
 - `openshift-install` (matching your target OCP version)
+- `helm`
 - `jq`
 - `yq` (recommended; scripts assume it unless we replace with a small Go helper)
+- `go` (used to install the `jv` JSON-schema validator)
+
+Schema validation uses `jv` and will install it into `.tools/bin` automatically if missing.
 
 You also need:
 
