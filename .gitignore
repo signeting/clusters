@@ -1,11 +1,25 @@
-.DS_Store
+# Secrets
+secrets/**
 
-# Secrets and generated outputs
-secrets/
-clusters/**/.work/
+# Cluster working output
+clusters/**/.work/**
 
-# Terraform/OpenTofu state and caches
+# OpenShift installer artifacts outside .work
+clusters/**/.openshift_install*
+clusters/**/metadata.json
+clusters/**/auth/kubeconfig
+clusters/**/auth/kubeadmin-password
+clusters/**/install-config.yaml
+
+# Terraform
 **/.terraform/
 **/*.tfstate
 **/*.tfstate.*
+**/terraform.tfstate.d/
 **/.terraform.lock.hcl
+
+# Local tools
+.tools/
+
+# OS cruft
+.DS_Store
