@@ -32,7 +32,8 @@ This plan is written so an AI coding agent can implement it end-to-end with mini
 - Install-config renderer is in place (`scripts/render-install-config.sh`).
 - Cluster create/destroy, GitOps bootstrap, and verify scripts are in place (`scripts/cluster-*.sh`, `scripts/bootstrap-gitops.sh`, `scripts/verify.sh`).
 - Docs runbooks and CI workflow are in place (`docs/*.md`, `.github/workflows/ci.yml`).
-- Next focus: Milestone 8 (credentials hardening).
+- Manual STS doc + prototype script are in place (`docs/CCO_MANUAL_STS.md`, `scripts/cco-manual-sts.sh`).
+- Next focus: Milestone 8 validation on a throwaway cluster.
 
 ---
 
@@ -386,6 +387,8 @@ Also gitignored.
 
 **DoD:**
 - Documented process + spike branch working on a throwaway cluster.
+
+**Status:** in progress (docs + prototype script done; cluster validation pending)
 
 ---
 
