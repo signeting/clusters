@@ -45,7 +45,7 @@ tmp_json="$(mktemp)"
 trap 'rm -f "${tmp_json}"' EXIT
 yq -o=json '.' "${cluster_yaml}" > "${tmp_json}"
 
-if ! "${jv_bin}" -output basic "${schema}" "${tmp_json}"; then
+if ! "${jv_bin}" --output basic "${schema}" "${tmp_json}"; then
   exit 1
 fi
 
