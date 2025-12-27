@@ -30,7 +30,8 @@ This plan is written so an AI coding agent can implement it end-to-end with mini
 - Preflight is in place (`scripts/preflight.sh`) with tool checks, schema validation, account guardrail, and secrets checks.
 - Terraform bootstrap/prereqs roots + scripts are in place (`platforms/aws/terraform/...`, `scripts/tf-*.sh`).
 - Install-config renderer is in place (`scripts/render-install-config.sh`).
-- Next focus: Milestone 4 (create/destroy) and Milestone 5 (GitOps bootstrap).
+- Cluster create/destroy, GitOps bootstrap, and verify scripts are in place (`scripts/cluster-*.sh`, `scripts/bootstrap-gitops.sh`, `scripts/verify.sh`).
+- Next focus: Milestone 6.2 (docs) and Milestone 7 (CI hygiene).
 
 ---
 
@@ -266,6 +267,8 @@ Also gitignored.
 **DoD:**
 - `oc --kubeconfig clusters/<cluster>/.work/kubeconfig get nodes` works.
 
+**Status:** done
+
 ---
 
 ### Task 4.3 — Implement `scripts/cluster-destroy.sh`
@@ -279,6 +282,8 @@ Also gitignored.
 
 **DoD:**
 - Cluster resources are removed from AWS.
+
+**Status:** done
 
 ---
 
@@ -306,6 +311,8 @@ Also gitignored.
 - Argo resources exist and begin syncing.
 - Trace file exists under `clusters/<cluster>/.work/` with repo URL/ref/SHA and timestamp.
 
+**Status:** done
+
 ---
 
 ## Milestone 6 — Verification + troubleshooting docs
@@ -322,6 +329,8 @@ Also gitignored.
 
 **DoD:**
 - `make verify` returns non-zero on failure.
+
+**Status:** done
 
 ---
 
