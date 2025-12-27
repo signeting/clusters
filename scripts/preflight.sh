@@ -70,10 +70,14 @@ if [[ "${caller_account}" != "${account_id}" ]]; then
   fail "AWS account mismatch: expected ${account_id}, got ${caller_account} (profile: ${profile_label})"
 fi
 
-pull_secret="${secrets_dir}/pull-secret.json"
-ssh_pub="${secrets_dir}/ssh.pub"
-[[ -f "${pull_secret}" ]] || fail "Missing pull secret: ${pull_secret}"
-[[ -f "${ssh_pub}" ]] || fail "Missing SSH public key: ${ssh_pub}"
+if [[ "${PREFLIGHT_SKIP_SECRETS:-}" != "1" && "${PREFLIGHT_SKIP_SECRETS:-}" != "true" ]]; then
+  pull_secret="${secrets_dir}/pull-secret.json"
+  ssh_pub="${secrets_dir}/ssh.pub"
+  [[ -f "${pull_secret}" ]] || fail "Missing pull secret: ${pull_secret}"
+  [[ -f "${ssh_pub}" ]] || fail "Missing SSH public key: ${ssh_pub}"
+else
+  log "Skipping secrets check (PREFLIGHT_SKIP_SECRETS=1)"
+fi
 
 log "Preflight OK"
 log "Cluster: ${CLUSTER} (name: ${name}, env: ${env})"
