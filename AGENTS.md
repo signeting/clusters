@@ -38,6 +38,7 @@ Purpose: Guide AI/dev assistants working in this repo (Day-0 cluster provisionin
 - Use Conventional Commits: `type(scope): subject` (imperative). Example: `feat(scripts): add preflight account guard`.
 - Recommended types: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `ci`, `build`.
 - Scope should match the surface area: `scripts`, `platforms/aws`, `schemas`, `docs`, `clusters`, `make`, `ci`.
+- Commit after each completed task/milestone using Conventional Commits. If the worktree has unrelated changes or the task is only partially complete, ask before committing.
 - Tag releases as `vX.Y.Z` (SemVer).
   - Major: breaking changes to `cluster.yaml` schema, Make targets, or workflow contracts.
   - Minor: new capabilities or provider support that do not break existing flows.
