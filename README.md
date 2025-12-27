@@ -35,6 +35,7 @@ Local tools:
 - `jq`
 - `yq` (recommended; scripts assume it unless we replace with a small Go helper)
 - `go` (used to install the `jv` JSON-schema validator)
+- `ccoctl` (required for `cco_mode: manual-sts`)
 
 Schema validation uses `jv` and will install it into `.tools/bin` automatically if missing.
 
@@ -191,6 +192,7 @@ flowchart TB
 │   ├── tf-bootstrap.sh
 │   ├── tf-apply.sh
 │   ├── render-install-config.sh
+│   ├── cco-manual-sts.sh
 │   ├── cluster-create.sh
 │   ├── cluster-destroy.sh
 │   ├── bootstrap-gitops.sh
@@ -199,6 +201,7 @@ flowchart TB
 │   └── cluster.schema.json
 ├── docs/
 │   ├── ARCHITECTURE.md
+│   ├── CCO_MANUAL_STS.md
 │   └── TROUBLESHOOTING.md
 ├── Makefile
 └── README.md
@@ -282,6 +285,7 @@ MVP uses `cco_mode: mint` for simplicity. Roadmap adds `manual-sts` to avoid lon
 | `make validate` | validate `cluster.yaml` against JSON schema |
 | `make tf-bootstrap` | one-time: create state bucket/backend |
 | `make tf-apply` | per cluster: DNS + IAM prereqs |
+| `make cco-manual-sts` | prepare AWS STS IAM/OIDC resources (manual CCO mode) |
 | `make cluster-create` | create OCP cluster via `openshift-install` |
 | `make bootstrap-gitops` | call `bitiq-io/gitops/scripts/bootstrap.sh` |
 | `make verify` | health checks (nodes, operators, gitops) |
@@ -303,7 +307,7 @@ More in `docs/TROUBLESHOOTING.md`.
 
 ## Roadmap
 
-- `cco_mode: manual-sts` for short-lived credentials on AWS (and analogous workload identity on Azure/GCP).
+- `cco_mode: manual-sts` hardening for short-lived credentials on AWS (see `docs/CCO_MANUAL_STS.md`).
 - Azure and GCP implementations under `platforms/azure` and `platforms/gcp`.
 - Agent-based installer support for on-prem / airgapped environments.
 

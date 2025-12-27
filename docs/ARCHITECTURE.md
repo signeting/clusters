@@ -40,6 +40,7 @@ All automation flows through `scripts/*.sh`:
 - `scripts/tf-bootstrap.sh`
 - `scripts/tf-apply.sh`
 - `scripts/render-install-config.sh`
+- `scripts/cco-manual-sts.sh`
 - `scripts/cluster-create.sh`
 - `scripts/cluster-destroy.sh`
 - `scripts/bootstrap-gitops.sh`
