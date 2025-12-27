@@ -28,7 +28,9 @@ This plan is written so an AI coding agent can implement it end-to-end with mini
 - Repo skeleton is in place (directories, `.gitignore`, Makefile, script stubs).
 - Schema + example cluster template are in place (`schemas/cluster.schema.json`, `clusters/_example/...`).
 - Preflight is in place (`scripts/preflight.sh`) with tool checks, schema validation, account guardrail, and secrets checks.
-- Next focus: Milestone 3 (Terraform roots) and Milestone 4 (render/install).
+- Terraform bootstrap/prereqs roots + scripts are in place (`platforms/aws/terraform/...`, `scripts/tf-*.sh`).
+- Install-config renderer is in place (`scripts/render-install-config.sh`).
+- Next focus: Milestone 4 (create/destroy) and Milestone 5 (GitOps bootstrap).
 
 ---
 
@@ -200,6 +202,8 @@ Also gitignored.
 **DoD:**
 - `make tf-bootstrap` creates bucket and prints next steps.
 
+**Status:** done
+
 ---
 
 ### Task 3.2 — Terraform “prereqs” root (per cluster)
@@ -223,6 +227,8 @@ Also gitignored.
 **Notes:**
 - Start permissive (AdministratorAccess) if needed for MVP, but explicitly mark it as “tighten later”.
 
+**Status:** done
+
 ---
 
 ## Milestone 4 — Render install-config + OpenShift install
@@ -242,6 +248,8 @@ Also gitignored.
 **DoD:**
 - Re-running renderer produces the same output (idempotent).
 - Secrets do not leak into stdout.
+
+**Status:** done
 
 ---
 

@@ -177,7 +177,7 @@ flowchart TB
 │   └── signet-aws-prod/
 │       ├── cluster.yaml
 │       ├── install-config.yaml.tmpl
-│       └── .work/                  # generated (gitignored)
+│       └── .work/                  # generated (install-config, kubeconfig, terraform outputs)
 ├── secrets/
 │   └── <cluster>/                  # pull-secret.json, ssh.pub (gitignored)
 ├── platforms/
