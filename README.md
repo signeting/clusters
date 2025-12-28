@@ -226,8 +226,9 @@ platform:
   zones: ["us-west-2a"]  # single AZ default to avoid cross-AZ transfer costs
 
 dns:
-  # We recommend delegating a cloud subdomain (e.g. aws.signet.ing) for portability.
-  base_domain: aws.signet.ing
+  # We recommend delegating a per-cloud subdomain (e.g. aws.ocp.signet.ing) for portability.
+  # Keep the root domain provider-neutral; switching clouds becomes a subdomain change.
+  base_domain: aws.ocp.signet.ing
   # If you manage the zone elsewhere, you can set hosted_zone_id and skip creation.
   # hosted_zone_id: "Z123..."
 
@@ -269,11 +270,15 @@ We default to **single-AZ** for cost control. Multi-AZ costs often show up as cr
 
 ### DNS
 
-For AWS IPI installs, plan for Route53 public DNS ownership of the cluster’s domain or delegated subdomain (this repo can manage the hosted zone, or you can point at an existing one via `hosted_zone_id`).
+We recommend delegating per-cloud subdomains rather than moving the root domain. Examples:
+`aws.ocp.signet.ing`, `gcp.ocp.signet.ing`, `az.ocp.signet.ing`. This keeps the root
+domain provider-neutral and makes cloud changes a DNS delegation change. For AWS IPI installs,
+plan for Route53 public DNS ownership of the delegated subdomain (this repo can manage the hosted
+zone, or you can point at an existing one via `hosted_zone_id`).
 
 ### Credentials
 
-MVP uses `cco_mode: mint` for simplicity. Roadmap adds `manual-sts` to avoid long-lived cloud creds living in the cluster.
+MVP uses `cco_mode: mint` for simplicity. `manual-sts` is available as a prototype and still needs real-cluster validation.
 
 ---
 

@@ -38,6 +38,7 @@ Symptoms: cluster install stalls on DNS or console routes do not resolve.
 
 Fix:
 - If this repo created the hosted zone, delegate NS records from the parent zone.
+- Ensure the parent zone delegates the per-cloud subdomain (for example `aws.ocp.signet.ing`).
 - Allow time for propagation.
 
 ### Installer failures

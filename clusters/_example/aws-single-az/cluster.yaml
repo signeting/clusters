@@ -8,7 +8,7 @@ platform:
   zones: ["us-west-2a"]
 
 dns:
-  base_domain: aws.signet.ing
+  base_domain: aws.ocp.signet.ing
   # hosted_zone_id: "Z123..."
 
 openshift:

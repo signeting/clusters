@@ -15,12 +15,19 @@ This repo handles Day-0 cluster provisioning and Day-1 GitOps handoff. Day-2 wor
 - Secrets live in `secrets/<cluster>/` and are never committed.
 - Generated outputs live in `clusters/<cluster>/.work/` and are gitignored.
 
+## DNS delegation pattern
+
+We delegate per-cloud subdomains (for example `aws.ocp.signet.ing`, `gcp.ocp.signet.ing`,
+`az.ocp.signet.ing`) rather than moving the root domain. This keeps the root domain
+provider-neutral and makes cloud changes a DNS delegation update. `dns.base_domain` in
+`cluster.yaml` should point at the delegated subdomain.
+
 ## Provisioning flow
 
 1. `make preflight` validates tools, schema, account, and secrets.
 2. `make tf-bootstrap` creates the shared Terraform state bucket.
 3. `make tf-apply` provisions DNS and IAM prereqs per cluster.
-4. `make render-install-config` (invoked by create) renders `install-config.yaml`.
+4. `scripts/render-install-config.sh` (invoked by create and manual STS prep) renders `install-config.yaml`.
 5. `make cluster-create` runs `openshift-install create cluster`.
 6. `make bootstrap-gitops` runs the GitOps handoff script.
 7. `make verify` checks nodes, operators, and GitOps namespace.
