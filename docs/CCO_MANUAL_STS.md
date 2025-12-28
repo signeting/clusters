@@ -16,6 +16,8 @@ Manual STS avoids long-lived cloud credentials inside the cluster. IAM roles are
 
 - `oc`, `openshift-install`, `aws`, `ccoctl`, `jq`, `yq`
 - `ccoctl` is distributed with OpenShift releases. See upstream docs for extraction.
+- `oc adm release extract` needs registry auth. By default the script uses `secrets/<cluster>/pull-secret.json`
+  or `REGISTRY_AUTH_FILE` if set.
 
 Upstream reference: `ccoctl` AWS commands in `cloud-credential-operator`:
 https://raw.githubusercontent.com/openshift/cloud-credential-operator/master/docs/ccoctl.md
@@ -45,11 +47,16 @@ Optional env flags:
 - `CCO_DRY_RUN=1` to generate AWS CLI JSON instead of creating resources.
 - `CCO_CREATE_PRIVATE_S3_BUCKET=1` to create a private OIDC bucket/CloudFront endpoint.
 - `ALLOW_INSTALLER_REUSE=1` to reuse a non-empty installer dir.
+- `REGISTRY_AUTH_FILE=/path/to/pull-secret.json` to override the registry auth file.
 
 Outputs:
 
 - `clusters/<cluster>/.work/credrequests/` contains extracted CredentialsRequests.
 - `clusters/<cluster>/.work/ccoctl/manifests/` contains Secret manifests for the installer.
+
+Notes:
+
+- The script honors `credentials.aws_profile` from `cluster.yaml` when running `ccoctl`.
 
 ## Manual commands (reference)
 

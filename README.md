@@ -240,7 +240,7 @@ openshift:
 
 credentials:
   aws_profile: signet
-  cco_mode: mint   # mint (MVP) | manual-sts (roadmap)
+  cco_mode: mint   # mint (MVP) | manual-sts (experimental)
 
 gitops:
   repo_url: "https://github.com/bitiq-io/gitops.git"
@@ -307,7 +307,7 @@ More in `docs/TROUBLESHOOTING.md`.
 
 ## Roadmap
 
-- `cco_mode: manual-sts` hardening for short-lived credentials on AWS (see `docs/CCO_MANUAL_STS.md`).
+- Validate `cco_mode: manual-sts` on a throwaway cluster (see `docs/CCO_MANUAL_STS.md`).
 - Azure and GCP implementations under `platforms/azure` and `platforms/gcp`.
 - Agent-based installer support for on-prem / airgapped environments.
 

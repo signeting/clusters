@@ -15,10 +15,11 @@ Required env:
   OPENSHIFT_RELEASE_IMAGE   e.g. quay.io/openshift-release-dev/ocp-release:4.20.0-x86_64
 
 Optional env:
-  ALLOW_INSTALLER_REUSE      If set to 1/true, reuse a non-empty installer dir
-  CCO_DRY_RUN                If set to 1/true, pass --dry-run to ccoctl
+  ALLOW_INSTALLER_REUSE        If set to 1/true, reuse a non-empty installer dir
+  CCO_DRY_RUN                  If set to 1/true, pass --dry-run to ccoctl
   CCO_CREATE_PRIVATE_S3_BUCKET If set to 1/true, pass --create-private-s3-bucket
-  SKIP_CONFIRM               If set to 1/true, skip confirmation prompt
+  REGISTRY_AUTH_FILE           If set, use this auth file for oc release extract
+  SKIP_CONFIRM                 If set to 1/true, skip confirmation prompt
 USAGE
 }
 
@@ -36,6 +37,7 @@ work_dir="${cluster_dir}/.work"
 installer_dir="${work_dir}/installer"
 credreq_dir="${work_dir}/credrequests"
 cco_output_dir="${work_dir}/ccoctl"
+secrets_dir="${repo_root}/secrets/${CLUSTER}"
 
 [[ -f "${cluster_yaml}" ]] || fail "Missing ${cluster_yaml}"
 
@@ -48,6 +50,7 @@ done
 
 cco_mode="$(yq -r '.credentials.cco_mode' "${cluster_yaml}")"
 region="$(yq -r '.platform.region' "${cluster_yaml}")"
+aws_profile="$(yq -r '.credentials.aws_profile // ""' "${cluster_yaml}")"
 
 if [[ "${cco_mode}" != "manual-sts" ]]; then
   fail "credentials.cco_mode must be manual-sts (found: ${cco_mode})"
@@ -55,6 +58,18 @@ fi
 
 if [[ -z "${OPENSHIFT_RELEASE_IMAGE:-}" ]]; then
   fail "OPENSHIFT_RELEASE_IMAGE is required (e.g. quay.io/openshift-release-dev/ocp-release:4.20.0-x86_64)"
+fi
+
+registry_auth_file="${REGISTRY_AUTH_FILE:-${secrets_dir}/pull-secret.json}"
+[[ -f "${registry_auth_file}" ]] || fail "Missing registry auth file at ${registry_auth_file} (set REGISTRY_AUTH_FILE or ensure ${secrets_dir}/pull-secret.json exists)"
+
+profile_label="default"
+aws_env=()
+if [[ -n "${aws_profile}" && "${aws_profile}" != "null" ]]; then
+  aws_env=(AWS_PROFILE="${aws_profile}")
+  profile_label="${aws_profile}"
+elif [[ -n "${AWS_PROFILE:-}" ]]; then
+  profile_label="${AWS_PROFILE}"
 fi
 
 if [[ -d "${installer_dir}" && -n "$(ls -A "${installer_dir}")" ]]; then
@@ -87,6 +102,7 @@ log "Extracting CredentialsRequests from release image"
 rm -rf "${credreq_dir}"
 mkdir -p "${credreq_dir}"
 oc adm release extract --credentials-requests --cloud=aws \
+  --registry-config "${registry_auth_file}" \
   --to="${credreq_dir}" \
   "${OPENSHIFT_RELEASE_IMAGE}"
 
@@ -104,8 +120,9 @@ if [[ "${CCO_CREATE_PRIVATE_S3_BUCKET:-}" == "1" || "${CCO_CREATE_PRIVATE_S3_BUC
   ccoctl_args+=(--create-private-s3-bucket)
 fi
 
+log "Using AWS profile for ccoctl: ${profile_label}"
 log "Running ccoctl ${ccoctl_args[*]}"
-ccoctl "${ccoctl_args[@]}"
+"${aws_env[@]}" ccoctl "${ccoctl_args[@]}"
 
 if [[ ! -d "${cco_output_dir}/manifests" ]]; then
   fail "ccoctl did not produce manifests at ${cco_output_dir}/manifests"
