@@ -3,12 +3,12 @@
 ## Quick checks
 
 - `make preflight CLUSTER=<cluster>` should pass before any cloud writes.
-- `aws sts get-caller-identity` must match `platform.account_id`.
+- Cloud identity must match `platform.account_id` (AWS: `aws sts get-caller-identity`).
 - `oc get nodes` and `oc get co` should converge after install.
 
 ## Common failure modes
 
-### Wrong AWS account
+### Wrong cloud account/profile (AWS)
 
 Symptoms: `preflight` fails with an account mismatch.
 
@@ -16,7 +16,7 @@ Fix:
 - Set `AWS_PROFILE` to the correct profile or update `credentials.aws_profile`.
 - Re-run `make preflight`.
 
-### Missing secrets
+### Missing secrets (all clouds)
 
 Symptoms: `preflight` fails on `pull-secret.json` or `ssh.pub`.
 
@@ -24,7 +24,7 @@ Fix:
 - Place `secrets/<cluster>/pull-secret.json` and `secrets/<cluster>/ssh.pub`.
 - Re-run `make preflight`.
 
-### Terraform state bucket missing
+### Terraform state backend missing (AWS)
 
 Symptoms: `make tf-apply` fails to init the backend.
 
@@ -32,7 +32,7 @@ Fix:
 - Run `make tf-bootstrap CLUSTER=<cluster>`.
 - Ensure the bucket exists in the correct account/region.
 
-### DNS delegation not ready
+### DNS delegation not ready (all clouds)
 
 Symptoms: cluster install stalls on DNS or console routes do not resolve.
 
@@ -41,7 +41,7 @@ Fix:
 - Ensure the parent zone delegates the per-cloud subdomain (for example `aws.ocp.signet.ing`).
 - Allow time for propagation.
 
-### Installer failures
+### Installer failures (all clouds)
 
 Symptoms: `openshift-install` exits with errors or stalls.
 
@@ -49,7 +49,7 @@ Fix:
 - Inspect logs in `clusters/<cluster>/.work/installer/.openshift_install.log`.
 - Run `make cluster-destroy`, fix the cause, and retry.
 
-### GitOps bootstrap failures
+### GitOps bootstrap failures (all clouds)
 
 Symptoms: `make bootstrap-gitops` fails or Argo resources do not appear.
 

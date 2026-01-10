@@ -298,6 +298,16 @@ MVP uses `cco_mode: mint` for simplicity. `manual-sts` is available as a prototy
 
 ---
 
+## Runbooks
+
+For a cloud-agnostic workflow with provider-specific sections, see:
+
+- `docs/RUNBOOK.md`
+- `docs/TROUBLESHOOTING.md`
+- `docs/ARCHITECTURE.md`
+
+---
+
 ## Troubleshooting (short version)
 
 - **“Wrong AWS account”**: set `AWS_PROFILE=signet` and rerun `make preflight`.
