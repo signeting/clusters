@@ -70,7 +70,13 @@ oc whoami >/dev/null 2>&1 || fail "oc not authenticated (check kubeconfig)"
 machinesets_json="$(oc -n openshift-machine-api get machinesets -o json)"
 mapfile -t worker_machinesets < <(
   printf '%s' "${machinesets_json}" \
-    | jq -r '.items[] | select(.metadata.labels["machine.openshift.io/cluster-api-machine-role"]=="worker") | .metadata.name' \
+    | jq -r '.items[]
+      | select(
+          (.metadata.labels["machine.openshift.io/cluster-api-machine-role"]=="worker")
+          or
+          (.spec.template.metadata.labels["machine.openshift.io/cluster-api-machine-role"]=="worker")
+        )
+      | .metadata.name' \
     | sort
 )
 
@@ -104,11 +110,40 @@ while true; do
     fail "Timed out waiting for ${desired_replicas} worker nodes to be Ready"
   fi
 
+  # NOTE: In "compact" clusters, control-plane nodes may also have the worker role label.
+  # We want to wait for dedicated workers only (i.e., worker label present, master/control-plane absent).
   nodes_json="$(oc get nodes -o json)"
-  total_workers="$(printf '%s' "${nodes_json}" | jq '[.items[] | select(.metadata.labels["node-role.kubernetes.io/worker"] != null)] | length')"
-  ready_workers="$(printf '%s' "${nodes_json}" | jq '[.items[] | select(.metadata.labels["node-role.kubernetes.io/worker"] != null) | select(any(.status.conditions[]?; .type=="Ready" and .status=="True"))] | length')"
+  total_workers="$(printf '%s' "${nodes_json}" | jq '[.items[]
+    | select(.metadata.labels["node-role.kubernetes.io/worker"] != null)
+    | select(.metadata.labels["node-role.kubernetes.io/master"] == null)
+    | select(.metadata.labels["node-role.kubernetes.io/control-plane"] == null)
+  ] | length')"
+  ready_workers="$(printf '%s' "${nodes_json}" | jq '[.items[]
+    | select(.metadata.labels["node-role.kubernetes.io/worker"] != null)
+    | select(.metadata.labels["node-role.kubernetes.io/master"] == null)
+    | select(.metadata.labels["node-role.kubernetes.io/control-plane"] == null)
+    | select(any(.status.conditions[]?; .type=="Ready" and .status=="True"))
+  ] | length')"
 
-  log "Workers Ready: ${ready_workers}/${desired_replicas} (seen: ${total_workers})"
+  machinesets_json="$(oc -n openshift-machine-api get machinesets -o json)"
+  ms_desired="$(printf '%s' "${machinesets_json}" | jq '[.items[]
+    | select(
+        (.metadata.labels["machine.openshift.io/cluster-api-machine-role"]=="worker")
+        or
+        (.spec.template.metadata.labels["machine.openshift.io/cluster-api-machine-role"]=="worker")
+      )
+    | (.spec.replicas // 0)
+  ] | add // 0')"
+  ms_ready="$(printf '%s' "${machinesets_json}" | jq '[.items[]
+    | select(
+        (.metadata.labels["machine.openshift.io/cluster-api-machine-role"]=="worker")
+        or
+        (.spec.template.metadata.labels["machine.openshift.io/cluster-api-machine-role"]=="worker")
+      )
+    | (.status.readyReplicas // 0)
+  ] | add // 0')"
+
+  log "Dedicated worker nodes Ready: ${ready_workers}/${desired_replicas} (seen: ${total_workers}); MachineSets ready: ${ms_ready}/${ms_desired}"
   if (( ready_workers >= desired_replicas )); then
     break
   fi
