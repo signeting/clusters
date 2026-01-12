@@ -42,6 +42,7 @@ cluster_name="$(yq -r '.name' "${cluster_yaml}")"
 env_name="$(yq -r '.env' "${cluster_yaml}")"
 base_domain="$(yq -r '.dns.base_domain' "${cluster_yaml}")"
 hosted_zone_id="$(yq -r '.dns.hosted_zone_id // ""' "${cluster_yaml}")"
+aws_profile="$(yq -r '.credentials.aws_profile // ""' "${cluster_yaml}")"
 
 [[ -n "${account_id}" && "${account_id}" != "null" ]] || fail "platform.account_id not set"
 [[ -n "${region}" && "${region}" != "null" ]] || fail "platform.region not set"
@@ -51,6 +52,12 @@ hosted_zone_id="$(yq -r '.dns.hosted_zone_id // ""' "${cluster_yaml}")"
 
 state_bucket="${TF_STATE_BUCKET:-signet-clusters-tfstate-${account_id}}"
 state_key="${TF_STATE_KEY:-clusters/${CLUSTER}/prereqs.tfstate}"
+
+if [[ -n "${aws_profile}" && "${aws_profile}" != "null" ]]; then
+  export AWS_PROFILE="${aws_profile}"
+fi
+export AWS_SDK_LOAD_CONFIG=1
+log "Using AWS_PROFILE=${AWS_PROFILE:-default} for terraform"
 
 apply_args=()
 if [[ "${TF_AUTO_APPROVE:-}" == "1" || "${TF_AUTO_APPROVE:-}" == "true" ]]; then

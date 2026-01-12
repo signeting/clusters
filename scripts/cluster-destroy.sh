@@ -26,9 +26,17 @@ fi
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "${script_dir}/.." && pwd)"
 cluster_dir="${repo_root}/clusters/${CLUSTER}"
+cluster_yaml="${cluster_dir}/cluster.yaml"
 installer_dir="${cluster_dir}/.work/installer"
 
 PREFLIGHT_SKIP_SECRETS=1 "${script_dir}/preflight.sh" "${CLUSTER}"
+
+aws_profile="$(yq -r '.credentials.aws_profile // ""' "${cluster_yaml}")"
+if [[ -n "${aws_profile}" && "${aws_profile}" != "null" ]]; then
+  export AWS_PROFILE="${aws_profile}"
+fi
+export AWS_SDK_LOAD_CONFIG=1
+log "Using AWS_PROFILE=${AWS_PROFILE:-default} for openshift-install"
 
 if [[ "${SKIP_CONFIRM:-}" != "1" && "${SKIP_CONFIRM:-}" != "true" ]]; then
   printf "Type the cluster name (%s) to confirm destroy: " "${CLUSTER}"

@@ -33,6 +33,13 @@ installer_dir="${work_dir}/installer"
 "${script_dir}/render-install-config.sh" "${CLUSTER}"
 
 cco_mode="$(yq -r '.credentials.cco_mode' "${cluster_yaml}")"
+aws_profile="$(yq -r '.credentials.aws_profile // ""' "${cluster_yaml}")"
+if [[ -n "${aws_profile}" && "${aws_profile}" != "null" ]]; then
+  export AWS_PROFILE="${aws_profile}"
+fi
+export AWS_SDK_LOAD_CONFIG=1
+log "Using AWS_PROFILE=${AWS_PROFILE:-default} for openshift-install"
+
 if [[ "${cco_mode}" == "manual-sts" && ! -d "${installer_dir}/manifests" ]]; then
   fail "manual-sts requires manifests in ${installer_dir}/manifests (run scripts/cco-manual-sts.sh first)"
 fi

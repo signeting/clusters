@@ -63,14 +63,12 @@ fi
 registry_auth_file="${REGISTRY_AUTH_FILE:-${secrets_dir}/pull-secret.json}"
 [[ -f "${registry_auth_file}" ]] || fail "Missing registry auth file at ${registry_auth_file} (set REGISTRY_AUTH_FILE or ensure ${secrets_dir}/pull-secret.json exists)"
 
-profile_label="default"
-aws_env=()
 if [[ -n "${aws_profile}" && "${aws_profile}" != "null" ]]; then
-  aws_env=(AWS_PROFILE="${aws_profile}")
-  profile_label="${aws_profile}"
-elif [[ -n "${AWS_PROFILE:-}" ]]; then
-  profile_label="${AWS_PROFILE}"
+  export AWS_PROFILE="${aws_profile}"
 fi
+export AWS_SDK_LOAD_CONFIG=1
+
+profile_label="${AWS_PROFILE:-default}"
 
 if [[ -d "${installer_dir}" && -n "$(ls -A "${installer_dir}")" ]]; then
   if [[ "${ALLOW_INSTALLER_REUSE:-}" != "1" && "${ALLOW_INSTALLER_REUSE:-}" != "true" ]]; then
@@ -122,7 +120,7 @@ fi
 
 log "Using AWS profile for ccoctl: ${profile_label}"
 log "Running ccoctl ${ccoctl_args[*]}"
-"${aws_env[@]}" ccoctl "${ccoctl_args[@]}"
+ccoctl "${ccoctl_args[@]}"
 
 if [[ ! -d "${cco_output_dir}/manifests" ]]; then
   fail "ccoctl did not produce manifests at ${cco_output_dir}/manifests"
