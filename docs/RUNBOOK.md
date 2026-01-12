@@ -66,6 +66,20 @@ Why this is required: creating a hosted zone in Route53 does not automatically m
 reachable from the public internet. Delegation is the step that tells resolvers to send
 queries for that subdomain to the new zone's name servers.
 
+### Spot workers (AWS)
+
+OpenShift control plane instances should remain On-Demand. Worker capacity can be Spot.
+
+To use Spot workers:
+
+- Set `compute_market: spot` under `openshift:` in `clusters/<cluster>/cluster.yaml`.
+- Keep `openshift.compute_replicas` as the desired number of workers.
+- Install the cluster, then convert/scale workers:
+  - `make spot-workers CLUSTER=<cluster>`
+
+This patches worker MachineSets so that new Machines are Spot. Existing worker Machines
+are not automatically replaced.
+
 ### Provisioning commands (AWS)
 
 ```bash
@@ -74,6 +88,7 @@ make preflight        CLUSTER=$CLUSTER
 make tf-bootstrap     CLUSTER=$CLUSTER
 make tf-apply         CLUSTER=$CLUSTER
 make cluster-create   CLUSTER=$CLUSTER
+make spot-workers     CLUSTER=$CLUSTER   # if compute_market under openshift is spot
 make bootstrap-gitops CLUSTER=$CLUSTER
 make verify           CLUSTER=$CLUSTER
 ```

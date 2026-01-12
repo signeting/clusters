@@ -64,3 +64,9 @@ kubeconfig_dst="${work_dir}/kubeconfig"
 install -m 600 "${kubeconfig_src}" "${kubeconfig_dst}"
 
 log "Cluster create complete. Kubeconfig: ${kubeconfig_dst}"
+
+desired_workers="$(yq -r '.openshift.compute_replicas' "${cluster_yaml}")"
+compute_market="$(yq -r '.openshift.compute_market // "on-demand"' "${cluster_yaml}")"
+if [[ "${compute_market}" == "spot" && "${desired_workers}" != "0" ]]; then
+  log "Next: make spot-workers CLUSTER=${CLUSTER} (then make verify/bootstrap-gitops)"
+fi

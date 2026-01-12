@@ -32,6 +32,19 @@ Fix:
 - Run `make tf-bootstrap CLUSTER=<cluster>`.
 - Ensure the bucket exists in the correct account/region.
 
+### AWS On-Demand vCPU quota too low
+
+Symptoms: `cluster-create` fails with an error like:
+`error(MissingQuota): ec2/L-1216C47A ... required ... is more than the limit ...`
+
+Fix (pick one):
+- Reduce `openshift.*_replicas` and/or instance types so required On-Demand vCPUs fit the quota.
+- Use Spot for workers:
+  - Set `compute_market: spot` under `openshift:`
+  - Re-run `make cluster-create`
+  - Then run `make spot-workers CLUSTER=<cluster>`
+- Request a higher On-Demand vCPU quota for the region (`ec2/L-1216C47A`).
+
 ### DNS delegation not ready (all clouds)
 
 Symptoms: cluster install stalls on DNS or console routes do not resolve.

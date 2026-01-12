@@ -1,7 +1,7 @@
 SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := help
 
-.PHONY: help preflight validate tf-bootstrap tf-apply cco-manual-sts cluster-create cluster-destroy bootstrap-gitops verify
+.PHONY: help preflight validate tf-bootstrap tf-apply cco-manual-sts cluster-create cluster-destroy bootstrap-gitops spot-workers verify
 
 help:
 	@printf "Usage: make <target> CLUSTER=<name>\n\n"
@@ -14,6 +14,7 @@ help:
 	@printf "  cluster-create   Create cluster via openshift-install\n"
 	@printf "  cluster-destroy  Destroy cluster via openshift-install\n"
 	@printf "  bootstrap-gitops Run GitOps bootstrap on the cluster\n"
+	@printf "  spot-workers     Convert/scale worker MachineSets to Spot (AWS)\n"
 	@printf "  verify           Verify cluster and GitOps health\n"
 	@printf "\nEnvironment:\n"
 	@printf "  CLUSTER          Cluster name (matches clusters/<cluster>)\n"
@@ -41,6 +42,9 @@ cluster-destroy:
 
 bootstrap-gitops:
 	scripts/bootstrap-gitops.sh
+
+spot-workers:
+	scripts/spot-workers.sh
 
 verify:
 	scripts/verify.sh

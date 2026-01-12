@@ -238,6 +238,7 @@ openshift:
   compute_replicas: 2
   instance_type_control_plane: m6i.large
   instance_type_compute: m6i.xlarge
+  compute_market: on-demand  # on-demand (default) | spot
 
 credentials:
   aws_profile: signet
@@ -293,6 +294,7 @@ MVP uses `cco_mode: mint` for simplicity. `manual-sts` is available as a prototy
 | `make cco-manual-sts` | prepare AWS STS IAM/OIDC resources (manual CCO mode) |
 | `make cluster-create` | create OCP cluster via `openshift-install` |
 | `make bootstrap-gitops` | call `bitiq-io/gitops/scripts/bootstrap.sh` |
+| `make spot-workers` | patch/scale worker MachineSets to Spot (AWS) |
 | `make verify` | health checks (nodes, operators, gitops) |
 | `make cluster-destroy` | destroy cluster via `openshift-install destroy` |
 

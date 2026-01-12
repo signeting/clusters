@@ -49,6 +49,12 @@ instance_type_control_plane="$(yq -r '.openshift.instance_type_control_plane' "$
 region="$(yq -r '.platform.region' "${cluster_yaml}")"
 zones_json="$(yq -o=json '.platform.zones' "${cluster_yaml}" | tr -d '\n')"
 cco_mode="$(yq -r '.credentials.cco_mode' "${cluster_yaml}")"
+compute_market="$(yq -r '.openshift.compute_market // "on-demand"' "${cluster_yaml}")"
+
+render_compute_replicas="${compute_replicas}"
+if [[ "${compute_market}" == "spot" ]]; then
+  render_compute_replicas="0"
+fi
 
 pull_secret="$(tr -d '\n' < "${secrets_dir}/pull-secret.json")"
 ssh_pub="$(tr -d '\n' < "${secrets_dir}/ssh.pub")"
@@ -60,7 +66,7 @@ escape_sed() {
 sed_args=(
   -e "s|__CLUSTER_NAME__|$(escape_sed "${cluster_name}")|g"
   -e "s|__BASE_DOMAIN__|$(escape_sed "${base_domain}")|g"
-  -e "s|__COMPUTE_REPLICAS__|$(escape_sed "${compute_replicas}")|g"
+  -e "s|__COMPUTE_REPLICAS__|$(escape_sed "${render_compute_replicas}")|g"
   -e "s|__CONTROL_PLANE_REPLICAS__|$(escape_sed "${control_plane_replicas}")|g"
   -e "s|__INSTANCE_TYPE_COMPUTE__|$(escape_sed "${instance_type_compute}")|g"
   -e "s|__INSTANCE_TYPE_CONTROL_PLANE__|$(escape_sed "${instance_type_control_plane}")|g"

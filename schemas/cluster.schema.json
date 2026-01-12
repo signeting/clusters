@@ -99,6 +99,10 @@
         "instance_type_compute": {
           "type": "string",
           "minLength": 1
+        },
+        "compute_market": {
+          "type": "string",
+          "enum": ["on-demand", "spot"]
         }
       }
     },
