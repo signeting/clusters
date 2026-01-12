@@ -45,8 +45,8 @@ platform_type="$(yq -r '.platform.type' "${cluster_yaml}")"
 [[ "${platform_type}" == "aws" ]] || fail "spot-workers only supports platform.type=aws (found: ${platform_type})"
 
 desired_replicas="$(yq -r '.openshift.compute_replicas' "${cluster_yaml}")"
-compute_market="$(yq -r '.openshift.compute_market // \"on-demand\"' "${cluster_yaml}")"
-aws_profile="$(yq -r '.credentials.aws_profile // \"\"' "${cluster_yaml}")"
+compute_market="$(yq -r '.openshift.compute_market // "on-demand"' "${cluster_yaml}")"
+aws_profile="$(yq -r '.credentials.aws_profile // ""' "${cluster_yaml}")"
 region="$(yq -r '.platform.region' "${cluster_yaml}")"
 
 if [[ -n "${aws_profile}" && "${aws_profile}" != "null" ]]; then
