@@ -27,14 +27,13 @@ template="${cluster_dir}/install-config.yaml.tmpl"
 work_dir="${cluster_dir}/.work"
 output="${work_dir}/install-config.yaml"
 secrets_dir="${repo_root}/secrets/${CLUSTER}"
-tf_outputs="${work_dir}/terraform-prereqs.json"
 
 [[ -f "${cluster_yaml}" ]] || fail "Missing ${cluster_yaml}"
 [[ -f "${template}" ]] || fail "Missing ${template}"
 [[ -f "${secrets_dir}/pull-secret.json" ]] || fail "Missing ${secrets_dir}/pull-secret.json"
 [[ -f "${secrets_dir}/ssh.pub" ]] || fail "Missing ${secrets_dir}/ssh.pub"
 
-required_cmds=(yq jq sed)
+required_cmds=(yq sed)
 for cmd in "${required_cmds[@]}"; do
   command -v "${cmd}" >/dev/null 2>&1 || fail "Missing required tool: ${cmd}"
 done
@@ -53,11 +52,6 @@ cco_mode="$(yq -r '.credentials.cco_mode' "${cluster_yaml}")"
 
 pull_secret="$(tr -d '\n' < "${secrets_dir}/pull-secret.json")"
 ssh_pub="$(tr -d '\n' < "${secrets_dir}/ssh.pub")"
-
-hosted_zone_id=""
-if [[ -f "${tf_outputs}" ]]; then
-  hosted_zone_id="$(jq -r '.hosted_zone_id.value // empty' "${tf_outputs}")"
-fi
 
 escape_sed() {
   printf '%s' "$1" | sed -e 's/[\\/&|]/\\&/g'
@@ -80,12 +74,6 @@ if [[ "${cco_mode}" == "manual-sts" ]]; then
   sed_args+=(-e "s|__CREDENTIALS_MODE__|Manual|g")
 else
   sed_args+=(-e "/__CREDENTIALS_MODE__/d")
-fi
-
-if [[ -n "${hosted_zone_id}" ]]; then
-  sed_args+=(-e "s|__HOSTED_ZONE_ID__|$(escape_sed "${hosted_zone_id}")|g")
-else
-  sed_args+=(-e "/__HOSTED_ZONE_ID__/d")
 fi
 
 mkdir -p "${work_dir}"
