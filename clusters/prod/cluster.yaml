@@ -1,0 +1,29 @@
+name: prod
+env: prod
+
+platform:
+  type: aws
+  account_id: "153526447089"
+  region: us-west-2
+  zones: ["us-west-2a"]
+
+dns:
+  base_domain: aws.ocp.signet.ing
+  hosted_zone_id: "Z05328121MXHZ34TJLQJB"
+
+openshift:
+  version: "4.20"
+  control_plane_replicas: 3
+  compute_market: spot
+  compute_replicas: 3
+  instance_type_control_plane: m6i.xlarge
+  instance_type_compute: r5a.2xlarge
+
+credentials:
+  aws_profile: signet
+  cco_mode: mint
+
+gitops:
+  repo_url: "https://github.com/bitiq-io/gitops.git"
+  repo_ref: "main"
+  env: prod
