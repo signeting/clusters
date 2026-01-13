@@ -99,6 +99,7 @@ These are **gitignored**. Never commit them.
 export CLUSTER=signet-aws-prod
 
 make preflight        CLUSTER=$CLUSTER
+make quotas           CLUSTER=$CLUSTER   # EC2 vCPU quota/usage sanity-check
 make tf-bootstrap     CLUSTER=$CLUSTER   # one-time per AWS account (state bucket)
 make tf-apply         CLUSTER=$CLUSTER   # DNS + IAM prereqs
 make cluster-create   CLUSTER=$CLUSTER   # openshift-install create cluster
@@ -289,6 +290,8 @@ MVP uses `cco_mode: mint` for simplicity. `manual-sts` is available as a prototy
 |---|---|
 | `make preflight` | verify tools + verify AWS account |
 | `make validate` | validate `cluster.yaml` against JSON schema |
+| `make quotas` | report/check AWS EC2 vCPU quotas (cluster instance types) |
+| `make quotas-all` | report/check AWS EC2 vCPU quotas (all clusters) |
 | `make tf-bootstrap` | one-time: create state bucket/backend |
 | `make tf-apply` | per cluster: DNS + IAM prereqs |
 | `make cco-manual-sts` | prepare AWS STS IAM/OIDC resources (manual CCO mode) |

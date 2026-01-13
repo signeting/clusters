@@ -17,6 +17,7 @@ You can also set CLUSTER=<cluster> instead of passing an argument.
 
 Optional env:
   WAIT_TIMEOUT_SECONDS   Default: 3600
+  SKIP_QUOTAS            If set to 1/true, skip AWS EC2 quota checks
 USAGE
 }
 
@@ -62,6 +63,12 @@ fi
 if [[ "${desired_replicas}" == "0" ]]; then
   log "openshift.compute_replicas=0; nothing to do"
   exit 0
+fi
+
+if [[ "${SKIP_QUOTAS:-}" != "1" && "${SKIP_QUOTAS:-}" != "true" ]]; then
+  "${script_dir}/aws-quotas.sh" "${CLUSTER}"
+else
+  log "Skipping EC2 quota checks (SKIP_QUOTAS=1)"
 fi
 
 export KUBECONFIG="${kubeconfig}"

@@ -18,17 +18,20 @@ Scope: Day-0 provisioning and Day-1 GitOps handoff only.
    - Place the pull secret JSON and SSH public key under `secrets/<cluster>/`.
 3. Preflight
    - `make preflight CLUSTER=<cluster>`
-4. Provision cloud prereqs
+4. Check EC2 quotas (AWS)
+   - `make quotas CLUSTER=<cluster>`
+   - Optional (repo-wide scan): `make quotas-all`
+5. Provision cloud prereqs
    - `make tf-bootstrap CLUSTER=<cluster>` (one-time per cloud account)
    - `make tf-apply CLUSTER=<cluster>` (per cluster)
-5. Delegate DNS (if needed)
+6. Delegate DNS (if needed)
    - If `tf-apply` created a new public DNS zone for `dns.base_domain`, delegate it from the parent DNS zone by creating an NS record set that points at the child zone's name servers.
    - Wait for propagation and confirm `dig NS <dns.base_domain>` returns the expected name servers.
-6. Create the cluster
+7. Create the cluster
    - `make cluster-create CLUSTER=<cluster>`
-7. Handoff to GitOps
+8. Handoff to GitOps
    - `make bootstrap-gitops CLUSTER=<cluster>`
-8. Verify
+9. Verify
    - `make verify CLUSTER=<cluster>`
 
 ## AWS runbook
@@ -85,6 +88,7 @@ are not automatically replaced.
 ```bash
 export CLUSTER=throwaway
 make preflight        CLUSTER=$CLUSTER
+make quotas           CLUSTER=$CLUSTER
 make tf-bootstrap     CLUSTER=$CLUSTER
 make tf-apply         CLUSTER=$CLUSTER
 make cluster-create   CLUSTER=$CLUSTER

@@ -1,13 +1,15 @@
 SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := help
 
-.PHONY: help preflight validate tf-bootstrap tf-apply cco-manual-sts cluster-create cluster-destroy bootstrap-gitops spot-workers verify
+.PHONY: help preflight validate quotas quotas-all tf-bootstrap tf-apply cco-manual-sts cluster-create cluster-destroy bootstrap-gitops spot-workers verify
 
 help:
 	@printf "Usage: make <target> CLUSTER=<name>\n\n"
 	@printf "Targets:\n"
 	@printf "  preflight        Verify tools, schema, account, secrets\n"
 	@printf "  validate         Validate cluster.yaml against the schema\n"
+	@printf "  quotas           Check AWS EC2 vCPU quotas/usage (single cluster)\n"
+	@printf "  quotas-all       Check AWS EC2 vCPU quotas/usage (all clusters)\n"
 	@printf "  tf-bootstrap     One-time Terraform backend bootstrap\n"
 	@printf "  tf-apply         Per-cluster Terraform prereqs (DNS/IAM)\n"
 	@printf "  cco-manual-sts   Prepare AWS STS IAM/OIDC resources (manual CCO)\n"
@@ -24,6 +26,12 @@ preflight:
 
 validate:
 	scripts/validate.sh
+
+quotas:
+	scripts/aws-quotas.sh
+
+quotas-all:
+	scripts/aws-quotas.sh --all
 
 tf-bootstrap:
 	scripts/tf-bootstrap.sh

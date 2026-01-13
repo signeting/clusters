@@ -13,6 +13,7 @@ You can also set CLUSTER=<cluster> instead of passing an argument.
 
 Optional env:
   ALLOW_INSTALLER_REUSE   If set to 1/true, reuse a non-empty installer dir
+  SKIP_QUOTAS             If set to 1/true, skip AWS EC2 quota checks
 USAGE
 }
 
@@ -30,6 +31,11 @@ work_dir="${cluster_dir}/.work"
 installer_dir="${work_dir}/installer"
 
 "${script_dir}/preflight.sh" "${CLUSTER}"
+if [[ "${SKIP_QUOTAS:-}" != "1" && "${SKIP_QUOTAS:-}" != "true" ]]; then
+  "${script_dir}/aws-quotas.sh" "${CLUSTER}"
+else
+  log "Skipping EC2 quota checks (SKIP_QUOTAS=1)"
+fi
 "${script_dir}/render-install-config.sh" "${CLUSTER}"
 
 cco_mode="$(yq -r '.credentials.cco_mode' "${cluster_yaml}")"
