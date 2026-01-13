@@ -28,7 +28,10 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "${script_dir}/.." && pwd)"
 cluster_dir="${repo_root}/clusters/${CLUSTER}"
 cluster_yaml="${cluster_dir}/cluster.yaml"
+work_dir="${cluster_dir}/.work"
 installer_dir="${cluster_dir}/.work/installer"
+trace_file="${work_dir}/gitops-bootstrap.json"
+kubeconfig="${work_dir}/kubeconfig"
 
 PREFLIGHT_SKIP_SECRETS=1 "${script_dir}/preflight.sh" "${CLUSTER}"
 
@@ -60,6 +63,16 @@ fi
 
 log "Running openshift-install destroy cluster"
 openshift-install destroy cluster --dir "${installer_dir}"
+
+if [[ -f "${trace_file}" ]]; then
+  rm -f "${trace_file}"
+  log "Removed GitOps bootstrap trace: ${trace_file}"
+fi
+
+if [[ -f "${kubeconfig}" ]]; then
+  rm -f "${kubeconfig}"
+  log "Removed kubeconfig: ${kubeconfig}"
+fi
 
 if [[ "${CLEAN_INSTALLER:-}" == "1" || "${CLEAN_INSTALLER:-}" == "true" ]]; then
   rm -rf "${installer_dir}"

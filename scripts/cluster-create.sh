@@ -29,6 +29,7 @@ cluster_dir="${repo_root}/clusters/${CLUSTER}"
 cluster_yaml="${cluster_dir}/cluster.yaml"
 work_dir="${cluster_dir}/.work"
 installer_dir="${work_dir}/installer"
+trace_file="${work_dir}/gitops-bootstrap.json"
 
 "${script_dir}/preflight.sh" "${CLUSTER}"
 if [[ "${SKIP_QUOTAS:-}" != "1" && "${SKIP_QUOTAS:-}" != "true" ]]; then
@@ -37,6 +38,11 @@ else
   log "Skipping EC2 quota checks (SKIP_QUOTAS=1)"
 fi
 "${script_dir}/render-install-config.sh" "${CLUSTER}"
+
+if [[ -f "${trace_file}" ]]; then
+  rm -f "${trace_file}"
+  log "Removed stale GitOps bootstrap trace: ${trace_file}"
+fi
 
 cco_mode="$(yq -r '.credentials.cco_mode' "${cluster_yaml}")"
 aws_profile="$(yq -r '.credentials.aws_profile // ""' "${cluster_yaml}")"
