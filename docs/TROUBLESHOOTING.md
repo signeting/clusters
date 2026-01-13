@@ -69,6 +69,7 @@ Symptoms: `make bootstrap-gitops` fails or Argo resources do not appear.
 Fix:
 - Ensure `KUBECONFIG=clusters/<cluster>/.work/kubeconfig` works.
 - Confirm `helm` is installed.
+- If you see `no matches for kind "ArgoCD" in version "argoproj.io/v1beta1"`, the GitOps operator CRDs were not installed yet (fresh cluster race). Update to a version of this repo that includes `scripts/bootstrap-gitops.sh` ArgoCD CRD preflight, then re-run `make bootstrap-gitops`.
 - Run bootstrap directly from `.work/gitops-src/`:
   `ENV=prod BASE_DOMAIN=apps.<cluster>.<base_domain> ./scripts/bootstrap.sh`
 
