@@ -14,6 +14,7 @@ You can also set CLUSTER=<cluster> instead of passing an argument.
 Optional env:
   SKIP_CONFIRM     If set to 1/true, skip the confirmation prompt
   CLEAN_INSTALLER  If set to 1/true, remove installer dir after destroy
+  NON_INTERACTIVE  If set to 1/true, skip prompts (implies SKIP_CONFIRM=1)
 USAGE
 }
 
@@ -38,7 +39,15 @@ fi
 export AWS_SDK_LOAD_CONFIG=1
 log "Using AWS_PROFILE=${AWS_PROFILE:-default} for openshift-install"
 
-if [[ "${SKIP_CONFIRM:-}" != "1" && "${SKIP_CONFIRM:-}" != "true" ]]; then
+skip_confirm="${SKIP_CONFIRM:-}"
+if [[ "${NON_INTERACTIVE:-}" == "1" || "${NON_INTERACTIVE:-}" == "true" ]]; then
+  skip_confirm="1"
+fi
+
+if [[ "${skip_confirm}" != "1" && "${skip_confirm}" != "true" ]]; then
+  if [[ ! -t 0 ]]; then
+    fail "Refusing to prompt for confirmation in a non-interactive session (set SKIP_CONFIRM=1 or NON_INTERACTIVE=1)"
+  fi
   printf "Type the cluster name (%s) to confirm destroy: " "${CLUSTER}"
   read -r confirm
   if [[ "${confirm}" != "${CLUSTER}" ]]; then

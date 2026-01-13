@@ -15,6 +15,7 @@ Optional env:
   TF_STATE_BUCKET   Override the state bucket name
   TF_STATE_KEY      Override the state key (default: clusters/<cluster>/prereqs.tfstate)
   TF_AUTO_APPROVE   If set to 1/true, runs terraform apply -auto-approve
+  NON_INTERACTIVE   If set to 1/true, implies TF_AUTO_APPROVE=1
 USAGE
 }
 
@@ -60,7 +61,11 @@ export AWS_SDK_LOAD_CONFIG=1
 log "Using AWS_PROFILE=${AWS_PROFILE:-default} for terraform"
 
 apply_args=()
-if [[ "${TF_AUTO_APPROVE:-}" == "1" || "${TF_AUTO_APPROVE:-}" == "true" ]]; then
+if [[ "${NON_INTERACTIVE:-}" == "1" || "${NON_INTERACTIVE:-}" == "true" ]]; then
+  export TF_IN_AUTOMATION=1
+fi
+
+if [[ "${TF_AUTO_APPROVE:-}" == "1" || "${TF_AUTO_APPROVE:-}" == "true" || "${NON_INTERACTIVE:-}" == "1" || "${NON_INTERACTIVE:-}" == "true" ]]; then
   apply_args+=(-auto-approve)
 fi
 

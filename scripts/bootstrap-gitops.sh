@@ -12,7 +12,7 @@ Bootstraps GitOps for the given cluster.
 You can also set CLUSTER=<cluster> instead of passing an argument.
 
 Optional env:
-  GITOPS_REUSE_SRC   If set to 1/true, reuse existing .work/gitops-src
+  GITOPS_REUSE_SRC   Deprecated (gitops-src is reused automatically if it's a clean git repo)
 USAGE
 }
 
@@ -52,14 +52,20 @@ apps_base_domain="apps.${cluster_name}.${base_domain}"
 mkdir -p "${work_dir}"
 
 if [[ -d "${gitops_dir}" ]]; then
-  if [[ "${GITOPS_REUSE_SRC:-}" != "1" && "${GITOPS_REUSE_SRC:-}" != "true" ]]; then
-    fail "Existing gitops-src found at ${gitops_dir} (set GITOPS_REUSE_SRC=1 to reuse)"
-  fi
-  if [[ -n "$(ls -A "${gitops_dir}")" && ! -d "${gitops_dir}/.git" ]]; then
-    fail "gitops-src exists but is not a git repo: ${gitops_dir}"
-  fi
-  if [[ -n "$(git -C "${gitops_dir}" status --porcelain)" ]]; then
-    fail "gitops-src has uncommitted changes: ${gitops_dir}"
+  if [[ -d "${gitops_dir}/.git" ]]; then
+    if [[ -n "$(git -C "${gitops_dir}" status --porcelain)" ]]; then
+      fail "gitops-src has uncommitted changes: ${gitops_dir}"
+    fi
+    existing_origin="$(git -C "${gitops_dir}" remote get-url origin 2>/dev/null || true)"
+    if [[ -n "${existing_origin}" && "${existing_origin}" != "${gitops_repo}" ]]; then
+      log "WARN: Updating gitops-src origin from ${existing_origin} to ${gitops_repo}"
+      git -C "${gitops_dir}" remote set-url origin "${gitops_repo}"
+    fi
+  else
+    if [[ -n "$(ls -A "${gitops_dir}")" ]]; then
+      fail "gitops-src exists but is not a git repo: ${gitops_dir}"
+    fi
+    git clone "${gitops_repo}" "${gitops_dir}"
   fi
 else
   git clone "${gitops_repo}" "${gitops_dir}"
