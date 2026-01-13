@@ -14,6 +14,7 @@ This repo creates/destroys OpenShift clusters (starting with AWS) and then boots
 | Cluster lifecycle (create/destroy) | ✅ | ❌ |
 | Installing OpenShift (AWS IPI via `openshift-install`) | ✅ | ❌ |
 | Bootstrap GitOps onto a fresh cluster | ✅ | ✅ (via `scripts/bootstrap.sh`) |
+| Node pools (MachineSets, labels/taints, autoscaling) | ⚠️ bootstrap-only | ✅ |
 | Operators, namespaces, policies, workloads | ❌ | ✅ |
 | Day‑2 ops (rollouts, upgrades, drift control) | ❌ | ✅ |
 
@@ -259,6 +260,7 @@ This repo is designed to prevent expensive mistakes:
 
 - **Account hard check:** scripts fail if `aws sts get-caller-identity` does not match `cluster.yaml: platform.account_id`.
 - **Terraform guardrail:** Terraform AWS provider uses `allowed_account_ids = [platform.account_id]`.
+- **Quota sanity-check:** `cluster-create` and `spot-workers` run `make quotas` to fail fast if EC2 vCPU quotas/usage lack headroom (override with `SKIP_QUOTAS=1`).
 - **No secrets in git:** pull secret, ssh keys, kubeconfig, kubeadmin password, and install logs are all gitignored.
 - **Destructive actions require confirmation:** `cluster-destroy` prompts you to type the cluster name.
 
@@ -281,6 +283,12 @@ zone, or you can point at an existing one via `hosted_zone_id`).
 ### Credentials
 
 MVP uses `cco_mode: mint` for simplicity. `manual-sts` is available as a prototype and still needs real-cluster validation.
+
+### Node pools (MachineSets)
+
+- The OpenShift installer creates the baseline worker MachineSets. This repo may patch them for Spot via `make spot-workers`.
+- Additional/specialized pools (GPU, infra, storage, etc.) and their scheduling policy (labels/taints) are managed in `bitiq-io/gitops` so Argo CD can reconcile drift.
+- MachineSets are cluster-specific (they embed the installer `infraID` in names/tags); if you manage them in GitOps, template/inject `infraID` during bootstrap.
 
 ---
 

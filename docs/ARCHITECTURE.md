@@ -6,7 +6,13 @@ This repo handles Day-0 cluster provisioning and Day-1 GitOps handoff. Day-2 wor
 
 - Day-0: Terraform prereqs + `openshift-install` create/destroy.
 - Day-1: bootstrap GitOps so Argo CD takes over.
-- Day-2: out of scope here.
+- Day-2: out of scope here (workloads, policies, operators, and capacity primitives like MachineSets).
+
+### MachineSets and capacity ownership
+
+- Baseline worker MachineSets are created by the OpenShift installer. This repo may patch them for Spot via `make spot-workers` as a Day-1 bootstrap step.
+- Ongoing node pool management (additional MachineSets, labels/taints, autoscaling, GPU Operator, etc.) belongs in `bitiq-io/gitops` so Argo CD can reconcile drift.
+- Preflight guardrails remain here: AWS account checks and `make quotas` (EC2 vCPU quota/usage checks) run outside the cluster.
 
 ## Contract
 

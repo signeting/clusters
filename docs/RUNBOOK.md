@@ -83,6 +83,13 @@ To use Spot workers:
 This patches worker MachineSets so that new Machines are Spot. Existing worker Machines
 are not automatically replaced.
 
+### Node pools and MachineSets (AWS)
+
+- Baseline worker MachineSets are created by the installer; this repo may patch them for Spot via `make spot-workers`.
+- Additional/specialized pools (GPU, infra, storage) and their scheduling policy (labels/taints) should be managed in `bitiq-io/gitops` so Argo CD can reconcile drift.
+- MachineSets are cluster-specific (they embed the installer `infraID`); template/inject `infraID` during GitOps bootstrap and be cautious with Argo CD prune on capacity resources.
+- Before applying GitOps changes that add/scale new instance families (especially GPU), run `make quotas CLUSTER=<cluster>` to confirm EC2 quota headroom.
+
 ### Provisioning commands (AWS)
 
 ```bash
