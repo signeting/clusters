@@ -99,6 +99,26 @@ make verify           CLUSTER=$CLUSTER
 - Note: DNS/IAM prereqs are separate. Clean them up only if you intend to remove
   the cluster's cloud scaffolding.
 
+#### Teardown sanity-check (AWS)
+
+OpenShift/installer tags AWS resources with the installer `infraID` (not the cluster name).
+If you want to confirm what will be deleted (or verify cleanup after destroy):
+
+```bash
+export CLUSTER=<cluster>
+infra=$(jq -r .infraID "clusters/${CLUSTER}/.work/installer/metadata.json")
+
+# Ensure you're querying the correct AWS account/profile.
+AWS_PROFILE=<profile> aws sts get-caller-identity --query Account --output text
+
+# List cluster-owned EC2 instances (masters + workers, Spot or On-Demand).
+AWS_PROFILE=<profile> aws ec2 describe-instances --region us-west-2 \
+  --filters "Name=tag:kubernetes.io/cluster/${infra},Values=owned" \
+           "Name=instance-state-name,Values=pending,running,stopping,stopped" \
+  --query 'Reservations[].Instances[].[InstanceId,Tags[?Key==`Name`]|[0].Value]' \
+  --output table
+```
+
 ### Manual STS (AWS)
 
 - See `docs/CCO_MANUAL_STS.md` for the current prototype workflow.
