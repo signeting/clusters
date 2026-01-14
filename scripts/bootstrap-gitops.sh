@@ -136,6 +136,19 @@ ensure_subscription_env_var() {
   oc -n "${namespace}" patch subscription "${subscription}" --type merge -p "${patch_json}" >/dev/null
 }
 
+remove_subscription_env_var() {
+  local namespace="$1"
+  local subscription="$2"
+  local env_name="$3"
+
+  local patch_json
+  patch_json="$(oc -n "${namespace}" get subscription "${subscription}" -o json | \
+    jq -c --arg name "${env_name}" \
+      '{spec:{config:{env: ((.spec.config.env // []) | map(select(.name != $name)))}}}')"
+
+  oc -n "${namespace}" patch subscription "${subscription}" --type merge -p "${patch_json}" >/dev/null
+}
+
 wait_for_subscription_deployment_env() {
   local namespace="$1"
   local subscription="$2"
@@ -156,6 +169,38 @@ wait_for_subscription_deployment_env() {
           jq -r --arg env "${env_name}" '.spec.template.spec.containers[].env[]? | select(.name==$env) | .value' | \
           head -n1)"
         if [[ "${current_value}" == "${expected_value}" ]]; then
+          return 0
+        fi
+      fi
+    fi
+
+    sleep 5
+    waited=$((waited + 5))
+  done
+
+  return 1
+}
+
+wait_for_subscription_deployment_env_not_value() {
+  local namespace="$1"
+  local subscription="$2"
+  local env_name="$3"
+  local not_value="$4"
+  local timeout_seconds="${5:-900}"
+  local waited=0
+
+  while (( waited < timeout_seconds )); do
+    local current_csv
+    current_csv="$(oc -n "${namespace}" get subscription "${subscription}" -o jsonpath='{.status.currentCSV}' 2>/dev/null || true)"
+    if [[ -n "${current_csv}" ]]; then
+      local deploy_name
+      deploy_name="$(oc -n "${namespace}" get deploy -l "olm.owner=${current_csv}" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)"
+      if [[ -n "${deploy_name}" ]]; then
+        local current_value
+        current_value="$(oc -n "${namespace}" get deploy "${deploy_name}" -o json | \
+          jq -r --arg env "${env_name}" '.spec.template.spec.containers[].env[]? | select(.name==$env) | .value' | \
+          head -n1)"
+        if [[ -z "${current_value}" || "${current_value}" != "${not_value}" ]]; then
           return 0
         fi
       fi
@@ -217,17 +262,12 @@ ensure_gitops_operator_and_argocd_crd() {
   if bootstrap_ops_status_json="$(helm -n openshift-operators status bootstrap-operators --output json 2>/dev/null)"; then
     local bootstrap_ops_status
     bootstrap_ops_status="$(printf '%s' "${bootstrap_ops_status_json}" | jq -r '.info.status // ""')"
-    if [[ "${bootstrap_ops_status}" == "deployed" ]]; then
-      log "bootstrap-operators Helm release is deployed; skipping GitOps operator preflight"
-      return 0
+    if [[ "${bootstrap_ops_status}" != "deployed" ]]; then
+      log "bootstrap-operators Helm release exists (status=${bootstrap_ops_status:-unknown}); running GitOps operator preflight"
     fi
-    log "bootstrap-operators Helm release exists (status=${bootstrap_ops_status:-unknown}); running GitOps operator preflight"
   fi
 
   local want_disable_default_instance="${gitops_disable_default}"
-  if [[ "${argo_create}" == "true" ]]; then
-    want_disable_default_instance="true"
-  fi
 
   ensure_namespace "${argo_ns}"
 
@@ -270,6 +310,8 @@ YAML
 
   if [[ "${want_disable_default_instance}" == "true" ]]; then
     ensure_subscription_env_var "${gitops_sub_install_ns}" "${gitops_sub_name}" "DISABLE_DEFAULT_ARGOCD_INSTANCE" "true"
+  else
+    remove_subscription_env_var "${gitops_sub_install_ns}" "${gitops_sub_name}" "DISABLE_DEFAULT_ARGOCD_INSTANCE"
   fi
 
   if ! wait_for_subscription_csv "${gitops_sub_install_ns}" "${gitops_sub_name}" 1200; then
@@ -284,12 +326,22 @@ YAML
     if ! wait_for_subscription_deployment_env "${gitops_sub_install_ns}" "${gitops_sub_name}" "DISABLE_DEFAULT_ARGOCD_INSTANCE" "true" 900; then
       fail "Timed out waiting for ${gitops_sub_name} operator deployment to pick up DISABLE_DEFAULT_ARGOCD_INSTANCE=true"
     fi
+  else
+    if ! wait_for_subscription_deployment_env_not_value "${gitops_sub_install_ns}" "${gitops_sub_name}" "DISABLE_DEFAULT_ARGOCD_INSTANCE" "true" 900; then
+      fail "Timed out waiting for ${gitops_sub_name} operator deployment to drop DISABLE_DEFAULT_ARGOCD_INSTANCE=true"
+    fi
   fi
 
   if [[ "${argo_create}" == "true" ]]; then
     if oc -n "${argo_ns}" get argocd "${argo_name}" >/dev/null 2>&1; then
-      log "Deleting existing ArgoCD ${argo_ns}/${argo_name} so Helm can create/manage it"
-      oc -n "${argo_ns}" delete argocd "${argo_name}" --wait=true --timeout=10m >/dev/null
+      log "Default ArgoCD ${argo_ns}/${argo_name} detected; patching for Helm adoption"
+      oc -n "${argo_ns}" patch argocd "${argo_name}" --type merge \
+        -p '{"metadata":{"labels":{"app.kubernetes.io/managed-by":"Helm"},"annotations":{"meta.helm.sh/release-name":"bootstrap-operators","meta.helm.sh/release-namespace":"openshift-operators"}}}' >/dev/null
+
+      local desired_argo_spec_json
+      desired_argo_spec_json="$(yq -o=json '.argoInstance.spec // {}' "${values_file}")"
+      desired_argo_spec_json="$(printf '%s' "${desired_argo_spec_json}" | jq -c '. + {applicationSet:{enabled:true}}')"
+      oc -n "${argo_ns}" patch argocd "${argo_name}" --type merge -p "{\"spec\":${desired_argo_spec_json}}" >/dev/null
     fi
   fi
 }
@@ -306,6 +358,13 @@ log "Running gitops bootstrap (ENV=${gitops_env}, BASE_DOMAIN=${apps_base_domain
     GIT_REPO_URL="${gitops_repo}" \
     ./scripts/bootstrap.sh
 )
+
+if oc -n openshift-gitops get argocd openshift-gitops >/dev/null 2>&1; then
+  log "Enabling ArgoCD ApplicationSet controller"
+  oc -n openshift-gitops patch argocd openshift-gitops --type merge \
+    -p '{"spec":{"applicationSet":{"enabled":true}}}' >/dev/null
+  oc -n openshift-gitops rollout status deployment/openshift-gitops-applicationset-controller --timeout=10m >/dev/null
+fi
 
 jq -n \
   --arg cluster "${cluster_name}" \
