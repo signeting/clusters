@@ -299,7 +299,7 @@ MVP uses `cco_mode: mint` for simplicity. `manual-sts` is available as a prototy
 | `make preflight` | verify tools + verify AWS account |
 | `make validate` | validate `cluster.yaml` against JSON schema |
 | `make quotas` | report/check AWS EC2 vCPU quotas (cluster instance types) |
-| `make quotas-all` | report/check AWS EC2 vCPU quotas (all clusters) |
+| `make quotas-all` | report/check AWS EC2 vCPU quotas (all clusters; includes full limit listing) |
 | `make tf-bootstrap` | one-time: create state bucket/backend |
 | `make tf-apply` | per cluster: DNS + IAM prereqs |
 | `make cco-manual-sts` | prepare AWS STS IAM/OIDC resources (manual CCO mode) |

@@ -20,7 +20,7 @@ Scope: Day-0 provisioning and Day-1 GitOps handoff only.
    - `make preflight CLUSTER=<cluster>`
 4. Check EC2 quotas (AWS)
    - `make quotas CLUSTER=<cluster>`
-   - Optional (repo-wide scan): `make quotas-all`
+   - Optional (repo-wide scan, includes limits): `make quotas-all`
 5. Provision cloud prereqs
    - `make tf-bootstrap CLUSTER=<cluster>` (one-time per cloud account)
    - `make tf-apply CLUSTER=<cluster>` (per cluster)

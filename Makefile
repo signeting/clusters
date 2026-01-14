@@ -9,7 +9,7 @@ help:
 	@printf "  preflight        Verify tools, schema, account, secrets\n"
 	@printf "  validate         Validate cluster.yaml against the schema\n"
 	@printf "  quotas           Check AWS EC2 vCPU quotas/usage (single cluster)\n"
-	@printf "  quotas-all       Check AWS EC2 vCPU quotas/usage (all clusters)\n"
+	@printf "  quotas-all       Check AWS EC2 vCPU quotas/usage (all clusters, incl. limits)\n"
 	@printf "  tf-bootstrap     One-time Terraform backend bootstrap\n"
 	@printf "  tf-apply         Per-cluster Terraform prereqs (DNS/IAM)\n"
 	@printf "  cco-manual-sts   Prepare AWS STS IAM/OIDC resources (manual CCO)\n"
@@ -31,7 +31,7 @@ quotas:
 	scripts/aws-quotas.sh
 
 quotas-all:
-	scripts/aws-quotas.sh --all
+	scripts/aws-quotas.sh --all --show-limits
 
 tf-bootstrap:
 	scripts/tf-bootstrap.sh

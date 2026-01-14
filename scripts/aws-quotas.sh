@@ -7,9 +7,9 @@ fail() { log "FATAL: $*"; exit 1; }
 usage() {
   cat <<'USAGE'
 Usage:
-  aws-quotas.sh <cluster>
-  aws-quotas.sh --all
-  CLUSTER=<cluster> aws-quotas.sh
+  aws-quotas.sh <cluster> [--show-limits]
+  aws-quotas.sh --all [--show-limits]
+  CLUSTER=<cluster> aws-quotas.sh [--show-limits]
 
 Reports (and optionally enforces) AWS EC2 vCPU quotas vs. current usage for the
 instance types referenced by clusters/<cluster>/cluster.yaml.
@@ -23,7 +23,7 @@ Optional env:
   FAIL_ON_INSUFFICIENT   Default: 1 (set to 0/false to only warn)
   SKIP_ACCOUNT_CHECK     Default: 0 (set to 1/true to skip STS account guardrail)
 
-  Notes:
+Notes:
   - Quotas are regional and vCPU-based (Service Quotas: EC2).
   - For new installs, the OpenShift installer temporarily uses a bootstrap node;
     this script includes that peak automatically until cluster-owned instances
@@ -357,6 +357,19 @@ report_and_check_cluster() {
   local quotas_json
   quotas_json="$(aws "${aws_args[@]}" service-quotas list-service-quotas --service-code ec2 --region "${region}" --output json)"
 
+  if [[ "${SHOW_LIMITS}" == "1" ]]; then
+    log "EC2 vCPU quota limits (Service Quotas):"
+    printf '%s' "${quotas_json}" \
+      | jq -r '.Quotas[]
+        | select(.QuotaName | test("Running On-Demand|Spot Instance Requests"))
+        | [.QuotaName, (.Value|tostring)]
+        | @tsv' \
+      | sort \
+      | while IFS= read -r line; do
+          log "LIMIT: ${line}"
+        done
+  fi
+
   local -a relevant_categories=()
   local c
   for c in "${cp_category}" "${compute_category}"; do
@@ -495,14 +508,50 @@ main() {
     command -v "${cmd}" >/dev/null 2>&1 || fail "Missing required tool: ${cmd}"
   done
 
-  local mode="${1:-${CLUSTER:-}}"
-  if [[ -z "${mode}" ]]; then
+  local -a args=("$@")
+  local scan_all_clusters="0"
+  local show_limits="0"
+  local cluster_arg=""
+
+  local arg
+  for arg in "${args[@]}"; do
+    case "${arg}" in
+      --all)
+        scan_all_clusters="1"
+        ;;
+      --show-limits)
+        show_limits="1"
+        ;;
+      -h|--help)
+        usage
+        exit 0
+        ;;
+      *)
+        if [[ -z "${cluster_arg}" ]]; then
+          cluster_arg="${arg}"
+        else
+          fail "Unexpected argument: ${arg}"
+        fi
+        ;;
+    esac
+  done
+
+  if [[ "${show_limits}" == "1" ]]; then
+    SHOW_LIMITS="1"
+  else
+    SHOW_LIMITS="${SHOW_LIMITS:-0}"
+  fi
+
+  if [[ "${scan_all_clusters}" == "0" && -z "${cluster_arg}" ]]; then
+    cluster_arg="${CLUSTER:-}"
+  fi
+  if [[ -z "${cluster_arg}" && "${scan_all_clusters}" == "0" ]]; then
     usage
     exit 2
   fi
 
   local -a clusters=()
-  if [[ "${mode}" == "--all" ]]; then
+  if [[ "${scan_all_clusters}" == "1" ]]; then
     local script_dir repo_root clusters_root
     script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     repo_root="$(cd "${script_dir}/.." && pwd)"
@@ -523,7 +572,7 @@ main() {
       fail "No non-example clusters found under clusters/"
     fi
   else
-    clusters+=("${mode}")
+    clusters+=("${cluster_arg}")
   fi
 
   local failures=0
