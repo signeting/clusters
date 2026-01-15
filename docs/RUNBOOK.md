@@ -34,6 +34,43 @@ Scope: Day-0 provisioning and Day-1 GitOps handoff only.
 9. Verify
    - `make verify CLUSTER=<cluster>`
 
+## Access and URLs
+
+Kubeconfig and admin password (gitignored outputs):
+
+- `clusters/<cluster>/.work/kubeconfig` (this repo's normalized output)
+- `clusters/<cluster>/.work/installer/auth/kubeconfig` (installer output)
+- `clusters/<cluster>/.work/installer/auth/kubeadmin-password`
+
+Dashboard URLs (OpenShift defaults):
+
+- Apps base domain: `apps.<cluster>.<dns.base_domain>`
+- OpenShift Console: `https://console-openshift-console.apps.<cluster>.<dns.base_domain>`
+- Argo CD (OpenShift GitOps): `https://openshift-gitops-server-openshift-gitops.apps.<cluster>.<dns.base_domain>`
+- OAuth: `https://oauth-openshift.apps.<cluster>.<dns.base_domain>`
+- Prometheus: `https://prometheus-k8s-openshift-monitoring.apps.<cluster>.<dns.base_domain>`
+- Alertmanager: `https://alertmanager-main-openshift-monitoring.apps.<cluster>.<dns.base_domain>`
+- Grafana: `https://grafana-openshift-monitoring.apps.<cluster>.<dns.base_domain>`
+- Thanos Query: `https://thanos-querier-openshift-monitoring.apps.<cluster>.<dns.base_domain>`
+- API server: `https://api.<cluster>.<dns.base_domain>:6443`
+
+Prod cluster links (current):
+
+- OpenShift Console: `https://console-openshift-console.apps.prod.aws.ocp.signet.ing`
+- Argo CD (OpenShift GitOps): `https://openshift-gitops-server-openshift-gitops.apps.prod.aws.ocp.signet.ing`
+- OAuth: `https://oauth-openshift.apps.prod.aws.ocp.signet.ing`
+- Prometheus: `https://prometheus-k8s-openshift-monitoring.apps.prod.aws.ocp.signet.ing`
+- Alertmanager: `https://alertmanager-main-openshift-monitoring.apps.prod.aws.ocp.signet.ing`
+- Grafana: `https://grafana-openshift-monitoring.apps.prod.aws.ocp.signet.ing`
+- Thanos Query: `https://thanos-querier-openshift-monitoring.apps.prod.aws.ocp.signet.ing`
+- API server: `https://api.prod.aws.ocp.signet.ing:6443`
+
+If a route does not resolve yet, list the actual routes:
+
+```bash
+KUBECONFIG=clusters/<cluster>/.work/kubeconfig oc get route -A
+```
+
 ## AWS runbook
 
 ### Account and credentials
