@@ -303,6 +303,8 @@ This repo is designed to prevent expensive mistakes:
 
 We default to **single-AZ** for cost control. Multi-AZ costs often show up as cross-AZ data transfer (control plane replication + service traffic + app chatter). When uptime needs win over cost, switch to multi-AZ by setting multiple zones in `cluster.yaml`.
 
+GPU capacity exception: AWS GPU instance capacity can be constrained in a single AZ. In that case, keep `cluster.yaml` single-AZ for baseline control plane/workers, but add GPU-only private subnets in additional AZs and manage GPU MachineSets in GitOps (`bitiq-io/gitops`). This preserves the single-AZ cost profile for baseline workloads while allowing GPU capacity to scale, at the cost of cross-AZ traffic (NAT egress and control-plane chatter).
+
 ### DNS
 
 We recommend delegating per-cloud subdomains rather than moving the root domain. Examples:

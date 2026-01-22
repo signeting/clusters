@@ -127,6 +127,7 @@ are not automatically replaced.
 - Additional/specialized pools (GPU, infra, storage) and their scheduling policy (labels/taints) should be managed in `bitiq-io/gitops` so Argo CD can reconcile drift.
 - MachineSets are cluster-specific (they embed the installer `infraID`); template/inject `infraID` during GitOps bootstrap and be cautious with Argo CD prune on capacity resources.
 - Before applying GitOps changes that add/scale new instance families (especially GPU), run `make quotas CLUSTER=<cluster>` to confirm EC2 quota headroom.
+- GPU capacity exception: if GPU capacity is constrained in the primary AZ, keep baseline workers single-AZ but add GPU-only private subnets in additional AZs and create GPU MachineSets there (GitOps-managed). This avoids a full multi-AZ footprint while allowing GPU scale-out, at the cost of cross-AZ NAT/control-plane traffic.
 
 ### Provisioning commands (AWS)
 
