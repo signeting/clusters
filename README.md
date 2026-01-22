@@ -143,6 +143,7 @@ Prod cluster links (current):
 - Prometheus: `https://prometheus-k8s-openshift-monitoring.apps.prod.aws.ocp.signet.ing`
 - Alertmanager: `https://alertmanager-main-openshift-monitoring.apps.prod.aws.ocp.signet.ing`
 - Grafana: `https://grafana-openshift-monitoring.apps.prod.aws.ocp.signet.ing`
+- RHOAI (OpenShift AI): `https://data-science-gateway.apps.prod.aws.ocp.signet.ing`
 - Thanos Query: `https://thanos-querier-openshift-monitoring.apps.prod.aws.ocp.signet.ing`
 - API server: `https://api.prod.aws.ocp.signet.ing:6443`
 
