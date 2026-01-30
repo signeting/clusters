@@ -33,6 +33,7 @@ repo_root="$(cd "${script_dir}/.." && pwd)"
 cluster_dir="${repo_root}/clusters/${CLUSTER}"
 cluster_yaml="${cluster_dir}/cluster.yaml"
 installer_metadata="${cluster_dir}/.work/installer/metadata.json"
+infra_id_file="${cluster_dir}/.work/infraID"
 
 [[ -f "${cluster_yaml}" ]] || fail "Missing ${cluster_yaml}"
 
@@ -48,12 +49,18 @@ export AWS_PAGER=""
 
 infra_id="${INFRA_ID:-}"
 if [[ -z "${infra_id}" ]]; then
-  [[ -f "${installer_metadata}" ]] || fail "Missing ${installer_metadata} (or set INFRA_ID=...)"
-  infra_id="$(jq -r '.infraID // empty' "${installer_metadata}")"
+  if [[ -f "${installer_metadata}" ]]; then
+    infra_id="$(jq -r '.infraID // empty' "${installer_metadata}")"
+  elif [[ -f "${infra_id_file}" ]]; then
+    infra_id="$(tr -d '\n' < "${infra_id_file}")"
+  else
+    fail "Could not determine infraID (missing ${installer_metadata} and ${infra_id_file}; set INFRA_ID=...)"
+  fi
 fi
 [[ -n "${infra_id}" ]] || fail "Could not determine infraID (set INFRA_ID=...)"
 
 tag_key="kubernetes.io/cluster/${infra_id}"
+owned_filter="Name=tag:${tag_key},Values=owned"
 tag_filter="Name=tag:${tag_key},Values=owned,shared"
 
 log "AWS cleanup check: cluster=${CLUSTER}, region=${region}, infraID=${infra_id}"
@@ -62,7 +69,16 @@ report_ec2_instances() {
   log "EC2 instances (owned/shared, non-terminated)"
   # shellcheck disable=SC2016
   aws ec2 describe-instances --region "${region}" \
-    --filters "${tag_filter}" "Name=instance-state-name,Values=pending,running,stopping,stopped" \
+    --filters "${tag_filter}" "Name=instance-state-name,Values=pending,running,stopping,stopped,shutting-down" \
+    --query 'Reservations[].Instances[].{InstanceId:InstanceId,AZ:Placement.AvailabilityZone,State:State.Name,Type:InstanceType,Name:Tags[?Key==`Name`]|[0].Value}' \
+    --output table || true
+}
+
+report_ec2_instances_terminated() {
+  log "EC2 instances (owned/shared, terminated)"
+  # shellcheck disable=SC2016
+  aws ec2 describe-instances --region "${region}" \
+    --filters "${tag_filter}" "Name=instance-state-name,Values=terminated" \
     --query 'Reservations[].Instances[].{InstanceId:InstanceId,AZ:Placement.AvailabilityZone,State:State.Name,Type:InstanceType,Name:Tags[?Key==`Name`]|[0].Value}' \
     --output table || true
 }
@@ -107,6 +123,71 @@ get_tagged_arns() {
     --output json
 }
 
+count_json_list() {
+  jq -r 'length'
+}
+
+count_live_owned_instances() {
+  aws ec2 describe-instances --region "${region}" \
+    --filters "${owned_filter}" "Name=instance-state-name,Values=pending,running,stopping,stopped,shutting-down" \
+    --query 'Reservations[].Instances[].InstanceId' --output json \
+    | count_json_list
+}
+
+count_live_owned_vpcs() {
+  aws ec2 describe-vpcs --region "${region}" \
+    --filters "${owned_filter}" \
+    --query 'Vpcs[].VpcId' --output json \
+    | count_json_list
+}
+
+count_live_owned_subnets() {
+  aws ec2 describe-subnets --region "${region}" \
+    --filters "${owned_filter}" \
+    --query 'Subnets[].SubnetId' --output json \
+    | count_json_list
+}
+
+count_live_owned_enis() {
+  aws ec2 describe-network-interfaces --region "${region}" \
+    --filters "${owned_filter}" \
+    --query 'NetworkInterfaces[].NetworkInterfaceId' --output json \
+    | count_json_list
+}
+
+count_live_owned_volumes() {
+  aws ec2 describe-volumes --region "${region}" \
+    --filters "${owned_filter}" \
+    --query 'Volumes[].VolumeId' --output json \
+    | count_json_list
+}
+
+count_live_owned_eips() {
+  aws ec2 describe-addresses --region "${region}" \
+    --filters "${owned_filter}" \
+    --query 'Addresses[].AllocationId' --output json \
+    | count_json_list
+}
+
+count_live_owned_nat_gateways() {
+  aws ec2 describe-nat-gateways --region "${region}" \
+    --filter "Name=tag:${tag_key},Values=owned" \
+    --output json \
+    | jq -r '[.NatGateways[]? | select(.State != "deleted")] | length'
+}
+
+get_live_owned_summary() {
+  live_owned_instances="$(count_live_owned_instances)"
+  live_owned_vpcs="$(count_live_owned_vpcs)"
+  live_owned_subnets="$(count_live_owned_subnets)"
+  live_owned_enis="$(count_live_owned_enis)"
+  live_owned_volumes="$(count_live_owned_volumes)"
+  live_owned_eips="$(count_live_owned_eips)"
+  live_owned_nat_gateways="$(count_live_owned_nat_gateways)"
+
+  live_owned_total="$((live_owned_instances + live_owned_vpcs + live_owned_subnets + live_owned_enis + live_owned_volumes + live_owned_eips + live_owned_nat_gateways))"
+}
+
 owned_json=""
 owned_count="unknown"
 if owned_json="$(get_tagged_arns owned)"; then
@@ -132,7 +213,9 @@ if [[ "${include_shared}" == "1" ]]; then
   fi
 fi
 
-log "Tagged resources: owned=${owned_count}, shared=${shared_count} (tag key: ${tag_key})"
+get_live_owned_summary
+log "Tagged resources (eventually consistent): owned=${owned_count}, shared=${shared_count} (tag key: ${tag_key})"
+log "Live owned resources: instances=${live_owned_instances}, vpcs=${live_owned_vpcs}, subnets=${live_owned_subnets}, enis=${live_owned_enis}, volumes=${live_owned_volumes}, eips=${live_owned_eips}, nat_gateways=${live_owned_nat_gateways} (sum=${live_owned_total})"
 
 fail_on_owned="1"
 if [[ "${FAIL_ON_OWNED:-}" == "0" || "${FAIL_ON_OWNED:-}" == "false" ]]; then
@@ -141,41 +224,30 @@ fi
 
 owned_wait_seconds="${OWNED_WAIT_SECONDS:-0}"
 owned_wait_interval="${OWNED_WAIT_INTERVAL_SECONDS:-30}"
-if [[ "${fail_on_owned}" == "1" && "${owned_count}" != "0" && "${owned_count}" != "unknown" && "${owned_wait_seconds}" != "0" ]]; then
+if [[ "${fail_on_owned}" == "1" && "${live_owned_total}" != "0" && "${owned_wait_seconds}" != "0" ]]; then
   deadline="$(( $(date +%s) + owned_wait_seconds ))"
-  while [[ "${owned_count}" != "0" && "$(date +%s)" -lt "${deadline}" ]]; do
-    log "Owned resources still present (count=${owned_count}); waiting ${owned_wait_interval}s..."
+  while [[ "${live_owned_total}" != "0" && "$(date +%s)" -lt "${deadline}" ]]; do
+    log "Live owned resources still present (sum=${live_owned_total}); waiting ${owned_wait_interval}s..."
     sleep "${owned_wait_interval}"
 
-    if owned_json="$(get_tagged_arns owned)"; then
-      owned_count="$(printf '%s' "${owned_json}" | jq -r '.ResourceTagMappingList | length')"
-    else
-      log "WARN: failed to query Resource Groups Tagging API during wait; stopping wait early."
-      owned_count="unknown"
-      break
-    fi
+    get_live_owned_summary
   done
-  log "Post-wait tagged resources: owned=${owned_count}, shared=${shared_count} (tag key: ${tag_key})"
+  log "Post-wait live owned resources: instances=${live_owned_instances}, vpcs=${live_owned_vpcs}, subnets=${live_owned_subnets}, enis=${live_owned_enis}, volumes=${live_owned_volumes}, eips=${live_owned_eips}, nat_gateways=${live_owned_nat_gateways} (sum=${live_owned_total})"
 fi
 
 report_ec2_instances
+report_ec2_instances_terminated
 report_ec2_subnets
 report_ec2_nat_gateways
 report_ec2_network_interfaces
 report_ec2_volumes
 
-if [[ "${owned_count}" != "0" && "${owned_count}" != "unknown" ]]; then
-  log "Owned resource ARNs (expected to be empty after successful destroy):"
-  printf '%s' "${owned_json}" | jq -r '.ResourceTagMappingList[].ResourceARN' | sed 's/^/  - /'
-fi
-
-if [[ "${include_shared}" == "1" && "${shared_count}" != "0" && "${shared_count}" != "unknown" ]]; then
-  log "Shared resource ARNs (often manually-managed subnets/etc; review and delete if no longer needed):"
-  printf '%s' "${shared_json}" | jq -r '.ResourceTagMappingList[].ResourceARN' | sed 's/^/  - /'
-fi
-
-if [[ "${fail_on_owned}" == "1" && "${owned_count}" != "0" && "${owned_count}" != "unknown" ]]; then
-  fail "Owned resources still present for infraID=${infra_id}. Re-run after a few minutes; if they persist, delete them manually."
+if [[ "${fail_on_owned}" == "1" && "${live_owned_total}" != "0" ]]; then
+  if [[ "${owned_count}" != "unknown" && "${owned_count}" != "0" ]]; then
+    log "Owned resource ARNs (debugging; tagging API is eventually consistent):"
+    printf '%s' "${owned_json}" | jq -r '.ResourceTagMappingList[].ResourceARN' | sed 's/^/  - /'
+  fi
+  fail "Live owned resources still present for infraID=${infra_id} (sum=${live_owned_total}). Re-run after a few minutes; if they persist, delete them manually."
 fi
 
 log "Cleanup check complete."

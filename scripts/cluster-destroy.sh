@@ -98,6 +98,9 @@ fi
 
 [[ -d "${installer_dir}" ]] || fail "Missing installer dir: ${installer_dir}"
 [[ -f "${installer_dir}/metadata.json" ]] || fail "Missing metadata.json in ${installer_dir}"
+infra_id="$(jq -r '.infraID // empty' "${installer_dir}/metadata.json")"
+[[ -n "${infra_id}" ]] || fail "Could not read infraID from ${installer_dir}/metadata.json"
+printf '%s' "${infra_id}" > "${work_dir}/infraID"
 
 log "Running openshift-install destroy cluster"
 openshift-install destroy cluster --dir "${installer_dir}"
@@ -128,6 +131,7 @@ fi
 
 if [[ "${SKIP_CLEANUP_CHECK:-}" != "1" && "${SKIP_CLEANUP_CHECK:-}" != "true" ]]; then
   log "Running AWS cleanup check (set SKIP_CLEANUP_CHECK=1 to skip)"
+  INFRA_ID="${infra_id}" \
   OWNED_WAIT_SECONDS="${OWNED_WAIT_SECONDS:-900}" \
   OWNED_WAIT_INTERVAL_SECONDS="${OWNED_WAIT_INTERVAL_SECONDS:-30}" \
   "${script_dir}/aws-cleanup-check.sh" "${CLUSTER}"
