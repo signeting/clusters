@@ -146,8 +146,14 @@ make verify           CLUSTER=$CLUSTER
 ### Teardown
 
 - `make cluster-destroy CLUSTER=<cluster>`
-- Note: DNS/IAM prereqs are separate. Clean them up only if you intend to remove
-  the cluster's cloud scaffolding.
+  - Prompts you to type the cluster name
+  - Verifies `dns.hosted_zone_id` still exists (and is preserved)
+  - Runs an AWS cleanup report (including cross-AZ GPU workers/subnets)
+- Optional: `make cleanup-check CLUSTER=<cluster>` (re-run the AWS cleanup report)
+- Optional: `make tf-destroy CLUSTER=<cluster>` (destroy Terraform DNS/IAM prereqs)
+  - Preserves the Route53 hosted zone by default
+  - Skip this if you plan to recreate soon (it deletes IAM prereqs like the provisioner role)
+  - Set `DESTROY_HOSTED_ZONE=1` if you explicitly want Terraform to delete a zone it created
 
 #### Teardown sanity-check (AWS)
 
@@ -156,6 +162,9 @@ If you want to confirm what will be deleted (or verify cleanup after destroy):
 
 ```bash
 export CLUSTER=<cluster>
+make cleanup-check CLUSTER=$CLUSTER
+
+# Or do it manually:
 infra=$(jq -r .infraID "clusters/${CLUSTER}/.work/installer/metadata.json")
 
 # Ensure you're querying the correct AWS account/profile.
@@ -163,7 +172,7 @@ AWS_PROFILE=<profile> aws sts get-caller-identity --query Account --output text
 
 # List cluster-owned EC2 instances (masters + workers, Spot or On-Demand).
 AWS_PROFILE=<profile> aws ec2 describe-instances --region us-west-2 \
-  --filters "Name=tag:kubernetes.io/cluster/${infra},Values=owned" \
+  --filters "Name=tag:kubernetes.io/cluster/${infra},Values=owned,shared" \
            "Name=instance-state-name,Values=pending,running,stopping,stopped" \
   --query 'Reservations[].Instances[].[InstanceId,Tags[?Key==`Name`]|[0].Value]' \
   --output table

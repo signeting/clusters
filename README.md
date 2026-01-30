@@ -293,7 +293,7 @@ This repo is designed to prevent expensive mistakes:
 - **Terraform guardrail:** Terraform AWS provider uses `allowed_account_ids = [platform.account_id]`.
 - **Quota sanity-check:** `cluster-create` and `spot-workers` run `make quotas` to fail fast if EC2 vCPU quotas/usage lack headroom (override with `SKIP_QUOTAS=1`).
 - **No secrets in git:** pull secret, ssh keys, kubeconfig, kubeadmin password, and install logs are all gitignored.
-- **Destructive actions require confirmation:** `cluster-destroy` prompts you to type the cluster name.
+- **Destructive actions require confirmation:** `cluster-destroy` prompts you to type the cluster name and runs a post-destroy AWS cleanup report.
 
 ---
 
@@ -335,12 +335,14 @@ MVP uses `cco_mode: mint` for simplicity. `manual-sts` is available as a prototy
 | `make quotas-all` | report/check AWS EC2 vCPU quotas (all clusters; includes full limit listing) |
 | `make tf-bootstrap` | one-time: create state bucket/backend |
 | `make tf-apply` | per cluster: DNS + IAM prereqs |
+| `make tf-destroy` | destroy per cluster: DNS + IAM prereqs (preserves hosted zone by default) |
 | `make cco-manual-sts` | prepare AWS STS IAM/OIDC resources (manual CCO mode) |
 | `make cluster-create` | create OCP cluster via `openshift-install` |
 | `make bootstrap-gitops` | call `bitiq-io/gitops/scripts/bootstrap.sh` |
 | `make spot-workers` | patch/scale worker MachineSets to Spot (AWS) |
 | `make verify` | health checks (nodes, operators, gitops) |
 | `make cluster-destroy` | destroy cluster via `openshift-install destroy` |
+| `make cleanup-check` | report remaining AWS resources tagged to the cluster |
 
 ---
 
