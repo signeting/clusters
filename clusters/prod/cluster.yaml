@@ -5,7 +5,7 @@ platform:
   type: aws
   account_id: "153526447089"
   region: us-west-2
-  zones: ["us-west-2a"]
+  zones: ["us-west-2a", "us-west-2b", "us-west-2c", "us-west-2d"]
 
 dns:
   base_domain: aws.ocp.signet.ing
@@ -14,7 +14,7 @@ dns:
 openshift:
   version: "4.20"
   control_plane_replicas: 3
-  compute_market: spot
+  compute_market: on-demand
   compute_replicas: 3
   instance_type_control_plane: m6i.xlarge
   instance_type_compute: r5a.2xlarge
