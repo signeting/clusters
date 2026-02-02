@@ -24,7 +24,7 @@ latest_openshift_patch_for_minor() {
   html="$(curl -fsSL "${mirror_base}")" || return 1
   versions="$(printf '%s' "${html}" \
     | grep -Eo 'href="[0-9]+\.[0-9]+\.[0-9]+/' \
-    | sed -E 's/^href="([^"]+)\\/$/\\1/' \
+    | sed -E 's#^href="([^"]+)/$#\1#' \
     | grep -E "^${minor}\\.[0-9]+$" \
     | sort -V \
     | tail -n 1)"
@@ -39,7 +39,7 @@ latest_openshift_overall() {
   html="$(curl -fsSL "${mirror_base}")" || return 1
   versions="$(printf '%s' "${html}" \
     | grep -Eo 'href="[0-9]+\.[0-9]+\.[0-9]+/' \
-    | sed -E 's/^href="([^"]+)\\/$/\\1/' \
+    | sed -E 's#^href="([^"]+)/$#\1#' \
     | sort -V \
     | tail -n 1)"
   [[ -n "${versions}" ]] || return 1
@@ -70,7 +70,7 @@ check_openshift_installer_is_latest() {
   [[ -n "${local_installer}" ]] || fail "Could not determine openshift-install version (is it installed and on PATH?)"
 
   latest_overall="$(latest_openshift_overall)" || fail "Could not determine latest OpenShift version from mirror.openshift.com (check network/DNS), or set PREFLIGHT_SKIP_OPENSHIFT_INSTALLER_VERSION_CHECK=1"
-  latest_overall_minor="$(printf '%s' "${latest_overall}" | awk -F. '{print $1\".\"$2}')"
+  latest_overall_minor="$(printf '%s' "${latest_overall}" | awk -F. '{print $1"."$2}')"
 
   if [[ "${desired_minor}" != "${latest_overall_minor}" ]]; then
     fail "openshift.version (${desired_minor}) is not the latest minor (${latest_overall_minor}). Update ${cluster_yaml} to the latest minor, or set PREFLIGHT_SKIP_OPENSHIFT_INSTALLER_VERSION_CHECK=1"
