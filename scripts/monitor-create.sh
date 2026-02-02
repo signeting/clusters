@@ -138,13 +138,20 @@ while :; do
     exit 0
   fi
 
+  # Some installer versions log success only in the installer log.
+  installer_log="${work_dir}/installer/.openshift_install.log"
+  if [[ -f "${installer_log}" ]] && rg -q "Install complete!" "${installer_log}"; then
+    write_status "success: install complete"
+    summarize_success "${log_file}"
+    exit 0
+  fi
+
   if rg -q "FATAL:" "${log_file}"; then
     write_status "failure: FATAL in cluster-create log"
     summarize_failure "${log_file}"
     exit 2
   fi
 
-  installer_log="${work_dir}/installer/.openshift_install.log"
   if [[ -f "${installer_log}" ]] && rg -q "level=error" "${installer_log}"; then
     write_status "failure: error in installer log"
     summarize_failure "${log_file}"
