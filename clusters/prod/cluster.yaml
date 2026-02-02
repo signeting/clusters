@@ -12,7 +12,7 @@ dns:
   hosted_zone_id: "Z05328121MXHZ34TJLQJB"
 
 openshift:
-  version: "4.20"
+  version: "4.21"
   control_plane_replicas: 3
   compute_market: on-demand
   compute_replicas: 3
