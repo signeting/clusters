@@ -58,9 +58,9 @@ check_openshift_installer_is_latest() {
   desired_version="$(yq -r '.openshift.version // ""' "${cluster_yaml}")"
   [[ -n "${desired_version}" && "${desired_version}" != "null" ]] || fail "openshift.version not set in ${cluster_yaml}"
 
-  if [[ "${desired_version}" =~ ^[0-9]+\\.[0-9]+\\.[0-9]+$ ]]; then
+  if [[ "${desired_version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     desired_minor="$(printf '%s' "${desired_version}" | awk -F. '{print $1"."$2}')"
-  elif [[ "${desired_version}" =~ ^[0-9]+\\.[0-9]+$ ]]; then
+  elif [[ "${desired_version}" =~ ^[0-9]+\.[0-9]+$ ]]; then
     desired_minor="${desired_version}"
   else
     fail "openshift.version must be X.Y or X.Y.Z (got: ${desired_version})"
@@ -78,7 +78,7 @@ check_openshift_installer_is_latest() {
 
   latest_patch="$(latest_openshift_patch_for_minor "${desired_minor}")" || fail "Could not determine latest patch for ${desired_minor} from mirror.openshift.com"
 
-  if [[ "${desired_version}" =~ ^[0-9]+\\.[0-9]+\\.[0-9]+$ && "${desired_version}" != "${latest_patch}" ]]; then
+  if [[ "${desired_version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ && "${desired_version}" != "${latest_patch}" ]]; then
     fail "openshift.version is pinned to ${desired_version}, but latest patch for ${desired_minor} is ${latest_patch}. Update ${cluster_yaml} or set PREFLIGHT_SKIP_OPENSHIFT_INSTALLER_VERSION_CHECK=1"
   fi
 
