@@ -201,3 +201,46 @@ Not yet implemented. Expect to provide:
 ## Troubleshooting
 
 See `docs/TROUBLESHOOTING.md` for failure modes and recovery steps.
+
+## Installer Version Policy (Always Latest)
+
+This repo treats `clusters/<cluster>/cluster.yaml: openshift.version` as the desired *minor* track (e.g. `4.20`)
+and enforces that **the local `openshift-install` binary matches the latest patch release** in that minor.
+
+Why: `cluster-create` installs whatever `openshift-install` is on your `PATH`. If your local installer is old,
+you will silently install an older OpenShift, even if `cluster.yaml` says otherwise.
+
+### Download the latest `openshift-install` (and `oc`)
+
+Official client mirror:
+- `https://mirror.openshift.com/pub/openshift-v4/clients/ocp/`
+
+Pick the newest `X.Y.Z/` directory, then download the installer + client tarballs for your OS:
+
+macOS (Intel/Apple Silicon):
+```bash
+export OCP_VERSION=<X.Y.Z>
+curl -fsSL -o /tmp/openshift-install.tgz "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/${OCP_VERSION}/openshift-install-mac.tar.gz"
+curl -fsSL -o /tmp/openshift-client.tgz  "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/${OCP_VERSION}/openshift-client-mac.tar.gz"
+tar -C /tmp -xzf /tmp/openshift-install.tgz openshift-install
+tar -C /tmp -xzf /tmp/openshift-client.tgz oc kubectl
+sudo install -m 0755 /tmp/openshift-install /usr/local/bin/openshift-install
+sudo install -m 0755 /tmp/oc /usr/local/bin/oc
+```
+
+Linux:
+```bash
+export OCP_VERSION=<X.Y.Z>
+curl -fsSL -o /tmp/openshift-install.tgz "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/${OCP_VERSION}/openshift-install-linux.tar.gz"
+curl -fsSL -o /tmp/openshift-client.tgz  "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/${OCP_VERSION}/openshift-client-linux.tar.gz"
+tar -C /tmp -xzf /tmp/openshift-install.tgz openshift-install
+tar -C /tmp -xzf /tmp/openshift-client.tgz oc kubectl
+sudo install -m 0755 /tmp/openshift-install /usr/local/bin/openshift-install
+sudo install -m 0755 /tmp/oc /usr/local/bin/oc
+```
+
+Verify:
+```bash
+openshift-install version
+oc version --client
+```

@@ -4,6 +4,91 @@ set -euo pipefail
 log() { printf '[%s] %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$*"; }
 fail() { log "FATAL: $*"; exit 1; }
 
+is_true() {
+  case "${1:-}" in
+    1|true|TRUE|yes|YES|y|Y|on|ON) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+openshift_install_version() {
+  # Output like: "openshift-install 4.18.4"
+  openshift-install version 2>/dev/null | awk '/^openshift-install[[:space:]]+/ {print $2; exit}'
+}
+
+latest_openshift_patch_for_minor() {
+  local minor="$1"
+  local mirror_base="https://mirror.openshift.com/pub/openshift-v4/clients/ocp/"
+  local html versions
+
+  html="$(curl -fsSL "${mirror_base}")" || return 1
+  versions="$(printf '%s' "${html}" \
+    | grep -Eo 'href="[0-9]+\.[0-9]+\.[0-9]+/' \
+    | sed -E 's/^href="([^"]+)\\/$/\\1/' \
+    | grep -E "^${minor}\\.[0-9]+$" \
+    | sort -V \
+    | tail -n 1)"
+  [[ -n "${versions}" ]] || return 1
+  printf '%s' "${versions}"
+}
+
+latest_openshift_overall() {
+  local mirror_base="https://mirror.openshift.com/pub/openshift-v4/clients/ocp/"
+  local html versions
+
+  html="$(curl -fsSL "${mirror_base}")" || return 1
+  versions="$(printf '%s' "${html}" \
+    | grep -Eo 'href="[0-9]+\.[0-9]+\.[0-9]+/' \
+    | sed -E 's/^href="([^"]+)\\/$/\\1/' \
+    | sort -V \
+    | tail -n 1)"
+  [[ -n "${versions}" ]] || return 1
+  printf '%s' "${versions}"
+}
+
+check_openshift_installer_is_latest() {
+  local cluster_yaml="$1"
+  local desired_version desired_minor latest_overall latest_overall_minor latest_patch local_installer
+
+  if is_true "${PREFLIGHT_SKIP_OPENSHIFT_INSTALLER_VERSION_CHECK:-}"; then
+    log "Skipping openshift-install version check (PREFLIGHT_SKIP_OPENSHIFT_INSTALLER_VERSION_CHECK=1)"
+    return 0
+  fi
+
+  desired_version="$(yq -r '.openshift.version // ""' "${cluster_yaml}")"
+  [[ -n "${desired_version}" && "${desired_version}" != "null" ]] || fail "openshift.version not set in ${cluster_yaml}"
+
+  if [[ "${desired_version}" =~ ^[0-9]+\\.[0-9]+\\.[0-9]+$ ]]; then
+    desired_minor="$(printf '%s' "${desired_version}" | awk -F. '{print $1"."$2}')"
+  elif [[ "${desired_version}" =~ ^[0-9]+\\.[0-9]+$ ]]; then
+    desired_minor="${desired_version}"
+  else
+    fail "openshift.version must be X.Y or X.Y.Z (got: ${desired_version})"
+  fi
+
+  local_installer="$(openshift_install_version)"
+  [[ -n "${local_installer}" ]] || fail "Could not determine openshift-install version (is it installed and on PATH?)"
+
+  latest_overall="$(latest_openshift_overall)" || fail "Could not determine latest OpenShift version from mirror.openshift.com (check network/DNS), or set PREFLIGHT_SKIP_OPENSHIFT_INSTALLER_VERSION_CHECK=1"
+  latest_overall_minor="$(printf '%s' "${latest_overall}" | awk -F. '{print $1\".\"$2}')"
+
+  if [[ "${desired_minor}" != "${latest_overall_minor}" ]]; then
+    fail "openshift.version (${desired_minor}) is not the latest minor (${latest_overall_minor}). Update ${cluster_yaml} to the latest minor, or set PREFLIGHT_SKIP_OPENSHIFT_INSTALLER_VERSION_CHECK=1"
+  fi
+
+  latest_patch="$(latest_openshift_patch_for_minor "${desired_minor}")" || fail "Could not determine latest patch for ${desired_minor} from mirror.openshift.com"
+
+  if [[ "${desired_version}" =~ ^[0-9]+\\.[0-9]+\\.[0-9]+$ && "${desired_version}" != "${latest_patch}" ]]; then
+    fail "openshift.version is pinned to ${desired_version}, but latest patch for ${desired_minor} is ${latest_patch}. Update ${cluster_yaml} or set PREFLIGHT_SKIP_OPENSHIFT_INSTALLER_VERSION_CHECK=1"
+  fi
+
+  if [[ "${local_installer}" != "${latest_patch}" ]]; then
+    fail "openshift-install is ${local_installer}, but latest for ${desired_minor} is ${latest_patch}. Download the matching openshift-install, or set PREFLIGHT_SKIP_OPENSHIFT_INSTALLER_VERSION_CHECK=1"
+  fi
+
+  log "OpenShift installer OK: openshift-install=${local_installer} (latest for ${desired_minor})"
+}
+
 usage() {
   cat <<USAGE
 Usage: $0 <cluster>
@@ -27,12 +112,14 @@ secrets_dir="${repo_root}/secrets/${CLUSTER}"
 
 [[ -f "${cluster_yaml}" ]] || fail "Missing ${cluster_yaml}"
 
-required_cmds=(aws terraform oc openshift-install helm jq yq go)
+required_cmds=(aws terraform oc openshift-install helm jq yq go curl)
 for cmd in "${required_cmds[@]}"; do
   command -v "${cmd}" >/dev/null 2>&1 || fail "Missing required tool: ${cmd}"
 done
 
 "${script_dir}/validate.sh" "${CLUSTER}"
+
+check_openshift_installer_is_latest "${cluster_yaml}"
 
 name="$(yq -r '.name' "${cluster_yaml}")"
 env="$(yq -r '.env' "${cluster_yaml}")"
