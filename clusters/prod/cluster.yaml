@@ -17,7 +17,7 @@ openshift:
   compute_market: on-demand
   compute_replicas: 3
   instance_type_control_plane: m6i.xlarge
-  instance_type_compute: r5a.2xlarge
+  instance_type_compute: r5ad.2xlarge
 
 credentials:
   aws_profile: signet
