@@ -99,6 +99,10 @@ These are **gitignored**. Never commit them.
 ```bash
 export CLUSTER=signet-aws-prod
 
+# GitOps repo is private: export Argo CD repo credentials before bootstrap
+export GITOPS_REPO_USERNAME=<github-username>
+export GITOPS_REPO_PASSWORD=<github-pat>
+
 make preflight        CLUSTER=$CLUSTER
 make quotas           CLUSTER=$CLUSTER   # EC2 vCPU quota/usage sanity-check
 make tf-bootstrap     CLUSTER=$CLUSTER   # one-time per AWS account (state bucket)
