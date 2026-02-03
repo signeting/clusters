@@ -31,7 +31,7 @@ Purpose: Guide AI/dev assistants working in this repo (Day-0 cluster provisionin
   - Clone `gitops.repo_url` at `gitops.repo_ref` into `clusters/<cluster>/.work/gitops-src/`
   - Run `ENV=<gitops.env> BASE_DOMAIN=apps.<cluster>.<dns.base_domain> ./scripts/bootstrap.sh`
   - Record the Git SHA and timestamp for traceability
-- Valid `ENV` values in gitops are `local`, `sno`, and `prod`. This repo should default to `prod` for real clusters unless directed otherwise.
+- Valid `ENV` values in gitops are `local`, `sno`, `prod`, and `prodtest` (for ephemeral prod workflow testing). This repo should default to `prod` for real clusters unless directed otherwise.
 
 ## Git and Release Rules (SemVer + Conventional Commits)
 

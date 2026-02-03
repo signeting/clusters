@@ -83,6 +83,7 @@ cp -r clusters/_example/aws-single-az clusters/signet-aws-prod
 Edit:
 
 - `clusters/signet-aws-prod/cluster.yaml`
+  - `gitops.env` selects the GitOps overlay (`local`, `sno`, `prod`, `prodtest`). Use `prodtest` for ephemeral prod workflow testing; reserve `prod` for real prod.
 
 ### 4) Put secrets in the expected place
 
