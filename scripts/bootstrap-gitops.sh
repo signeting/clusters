@@ -83,6 +83,11 @@ if ! git -C "${gitops_dir}" checkout "${gitops_ref}" >/dev/null 2>&1; then
   git -C "${gitops_dir}" checkout "${gitops_ref}"
 fi
 
+# If the ref points to a remote branch, fast-forward to the latest commit.
+if git -C "${gitops_dir}" show-ref --verify --quiet "refs/remotes/origin/${gitops_ref}"; then
+  git -C "${gitops_dir}" pull --ff-only origin "${gitops_ref}"
+fi
+
 git_sha="$(git -C "${gitops_dir}" rev-parse HEAD)"
 timestamp="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 
