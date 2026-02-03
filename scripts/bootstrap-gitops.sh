@@ -17,6 +17,7 @@ Optional env:
   GITOPS_REPO_PASSWORD   Repo password/PAT for Argo CD (required for private repos)
   GITOPS_REPO_PAT        Alias for GITOPS_REPO_PASSWORD
   GITOPS_REPO_SECRET_NAME  Secret name in openshift-gitops (default: gitops-repo)
+  GITOPS_REPO_ACCESS_TIMEOUT Seconds to wait for Argo repo access check (default: 180)
 USAGE
 }
 
@@ -37,6 +38,7 @@ trace_file="${work_dir}/gitops-bootstrap.json"
 
 [[ -f "${cluster_yaml}" ]] || fail "Missing ${cluster_yaml}"
 [[ -f "${kubeconfig}" ]] || fail "Missing kubeconfig at ${kubeconfig}"
+export KUBECONFIG="${kubeconfig}"
 
 required_cmds=(git oc helm jq yq)
 for cmd in "${required_cmds[@]}"; do
@@ -234,6 +236,12 @@ wait_for_argocd_available() {
   return 1
 }
 
+base64_encode() {
+  # Cross-platform: we only need encoding (not decoding). Both GNU coreutils and macOS `base64`
+  # emit a trailing newline by default, so strip it.
+  printf '%s' "$1" | base64 | tr -d '\n'
+}
+
 ensure_argocd_repo_secret() {
   local repo_url="$1"
   local namespace="openshift-gitops"
@@ -241,15 +249,32 @@ ensure_argocd_repo_secret() {
   local username="${GITOPS_REPO_USERNAME:-}"
   local password="${GITOPS_REPO_PASSWORD:-${GITOPS_REPO_PAT:-}}"
 
-  if [[ -z "${username}" || -z "${password}" ]]; then
-    if [[ "${repo_url}" == *"github.com/bitiq-io/gitops"* ]]; then
-      fail "Missing GITOPS_REPO_USERNAME/GITOPS_REPO_PASSWORD for private repo ${repo_url}"
-    fi
-    log "No repo credentials provided; skipping Argo CD repo secret creation"
-    return 0
-  fi
-
   ensure_namespace "${namespace}"
+
+  # If the secret already exists and points at the same repo URL, don't require creds.
+  if oc -n "${namespace}" get secret "${secret_name}" >/dev/null 2>&1; then
+    local existing_url_b64 expected_url_b64
+    existing_url_b64="$(oc -n "${namespace}" get secret "${secret_name}" -o jsonpath='{.data.url}' 2>/dev/null | tr -d '\n' || true)"
+    expected_url_b64="$(base64_encode "${repo_url}")"
+    if [[ -n "${existing_url_b64}" && "${existing_url_b64}" == "${expected_url_b64}" ]]; then
+      log "Argo CD repo secret already exists: ${namespace}/${secret_name}"
+      return 0
+    fi
+
+    if [[ -z "${username}" || -z "${password}" ]]; then
+      log "WARN: Repo secret ${namespace}/${secret_name} exists but does not match ${repo_url}; no GITOPS_REPO_USERNAME/GITOPS_REPO_PASSWORD provided, so it will not be updated."
+      return 0
+    fi
+
+    log "Updating Argo CD repo secret: ${namespace}/${secret_name}"
+  else
+    if [[ -z "${username}" || -z "${password}" ]]; then
+      log "WARN: No repo credentials provided and ${namespace}/${secret_name} does not exist; Argo CD may not be able to read ${repo_url} if it's private."
+      return 0
+    fi
+
+    log "Creating Argo CD repo secret: ${namespace}/${secret_name}"
+  fi
 
   cat <<YAML | oc apply -f - >/dev/null
 apiVersion: v1
@@ -265,6 +290,91 @@ stringData:
   username: ${username}
   password: ${password}
 YAML
+}
+
+check_argocd_repo_access() {
+  # Best-effort: only fail if we can positively detect repo access errors for Applications
+  # that reference the requested repoURL. This avoids failing on "URL heuristics".
+  local repo_url="$1"
+  local namespace="openshift-gitops"
+  local timeout_seconds="${GITOPS_REPO_ACCESS_TIMEOUT:-180}"
+  local waited=0
+
+  if ! oc get crd applications.argoproj.io >/dev/null 2>&1; then
+    log "WARN: CRD applications.argoproj.io not found; skipping Argo repo access check"
+    return 0
+  fi
+
+  while (( waited < timeout_seconds )); do
+    local apps_json
+    apps_json="$(oc -n "${namespace}" get applications.argoproj.io -o json 2>/dev/null || true)"
+    if [[ -z "${apps_json}" ]]; then
+      sleep 5
+      waited=$((waited + 5))
+      continue
+    fi
+
+    local app_count
+    app_count="$(printf '%s' "${apps_json}" | jq -r --arg url "${repo_url}" '
+      [.items[]
+        | select(
+            ((.spec.source.repoURL? // "") == $url) or
+            ([.spec.sources[]?.repoURL] | index($url) != null)
+          )
+      ] | length
+    ' 2>/dev/null || echo 0)"
+
+    if [[ "${app_count}" == "0" ]]; then
+      sleep 5
+      waited=$((waited + 5))
+      continue
+    fi
+
+    local repo_errors
+    repo_errors="$(printf '%s' "${apps_json}" | jq -r --arg url "${repo_url}" '
+      .items[]
+      | select(
+          ((.spec.source.repoURL? // "") == $url) or
+          ([.spec.sources[]?.repoURL] | index($url) != null)
+        )
+      | (.status.conditions // [])
+      | map(select(
+          (.type // "" | test("ComparisonError|InvalidSpecError|RepoError"; "i")) or
+          (.message // "" | test("repository not found|authentication required|permission denied|unable to (connect|list)|no basic auth credentials|status code: (401|403)"; "i"))
+        ))
+      | .[]
+      | "\(.type): \(.message)"
+    ' 2>/dev/null || true)"
+
+    if [[ -n "${repo_errors}" ]]; then
+      fail "Argo CD cannot access repo ${repo_url}. Provide repo credentials (GITOPS_REPO_USERNAME/GITOPS_REPO_PASSWORD) or configure Argo repo creds in openshift-gitops. Errors: ${repo_errors//$'\n'/ | }"
+    fi
+
+    # If Argo has started reconciling these Applications (sync status present), treat that as
+    # evidence the repo is readable and stop waiting.
+    local reconciled
+    reconciled="$(printf '%s' "${apps_json}" | jq -r --arg url "${repo_url}" '
+      any(
+        .items[]
+        | select(
+            ((.spec.source.repoURL? // "") == $url) or
+            ([.spec.sources[]?.repoURL] | index($url) != null)
+          );
+        ((.status.sync.status? // "") != "") or ((.status.conditions // []) | length > 0)
+      )
+    ' 2>/dev/null || echo false)"
+
+    if [[ "${reconciled}" == "true" ]]; then
+      log "Argo CD repo access check: OK (${app_count} Application(s) reference ${repo_url})"
+      return 0
+    fi
+
+    sleep 5
+    waited=$((waited + 5))
+  done
+
+  log "WARN: Argo CD repo access check timed out after ${timeout_seconds}s (no definitive repo error detected); continuing"
+  return 0
 }
 
 ensure_gitops_operator_and_argocd_crd() {
@@ -404,6 +514,8 @@ if oc -n openshift-gitops get argocd openshift-gitops >/dev/null 2>&1; then
     -p '{"spec":{"applicationSet":{"enabled":true}}}' >/dev/null
   oc -n openshift-gitops rollout status deployment/openshift-gitops-applicationset-controller --timeout=10m >/dev/null
 fi
+
+check_argocd_repo_access "${gitops_repo}"
 
 jq -n \
   --arg cluster "${cluster_name}" \
