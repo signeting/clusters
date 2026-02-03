@@ -202,10 +202,19 @@ Not yet implemented. Expect to provide:
 
 See `docs/TROUBLESHOOTING.md` for failure modes and recovery steps.
 
-## Installer Version Policy (Always Latest)
+## Installer Version Policy (Guardrails)
 
-This repo treats `clusters/<cluster>/cluster.yaml: openshift.version` as the desired *minor* track (e.g. `4.20`)
-and enforces that **the local `openshift-install` binary matches the latest patch release** in that minor.
+This repo treats `clusters/<cluster>/cluster.yaml: openshift.version` as the desired OpenShift version:
+
+- `X.Y` (track the latest patch in that minor), or
+- `X.Y.Z` (pin an exact patch)
+
+Preflight enforces that **the local `openshift-install` binary matches the latest patch release** for the chosen minor.
+This is required because `install-config.yaml` does not pin a release image; `cluster-create` installs whatever
+`openshift-install` is on your `PATH`.
+
+To avoid accidentally bumping to a newer OpenShift minor (e.g. adopting `4.21` before your operators are ready),
+set `openshift.max_minor: "X.Y"` in `cluster.yaml`. Preflight will fail if `openshift.version` exceeds `max_minor`.
 
 Why: `cluster-create` installs whatever `openshift-install` is on your `PATH`. If your local installer is old,
 you will silently install an older OpenShift, even if `cluster.yaml` says otherwise.

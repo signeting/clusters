@@ -100,6 +100,11 @@
           "type": "string",
           "minLength": 1
         },
+        "max_minor": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[0-9]+\\.[0-9]+$"
+        },
         "compute_market": {
           "type": "string",
           "enum": ["on-demand", "spot"]

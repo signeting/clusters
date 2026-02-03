@@ -12,7 +12,9 @@ dns:
   hosted_zone_id: "Z05328121MXHZ34TJLQJB"
 
 openshift:
-  version: "4.21"
+  # Pin prod to a known-good OpenShift patch; bump intentionally after validating operator compatibility.
+  version: "4.20.13"
+  max_minor: "4.20"
   control_plane_replicas: 3
   compute_market: on-demand
   compute_replicas: 3

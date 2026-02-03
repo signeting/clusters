@@ -11,6 +11,31 @@ is_true() {
   esac
 }
 
+compare_minor() {
+  # Compare X.Y minor versions (numeric). Echoes -1, 0, or 1.
+  local a="$1" b="$2"
+  local a_major a_minor b_major b_minor
+
+  a_major="${a%%.*}"
+  a_minor="${a#*.}"
+  b_major="${b%%.*}"
+  b_minor="${b#*.}"
+
+  if (( a_major < b_major )); then
+    echo -1; return 0
+  fi
+  if (( a_major > b_major )); then
+    echo 1; return 0
+  fi
+  if (( a_minor < b_minor )); then
+    echo -1; return 0
+  fi
+  if (( a_minor > b_minor )); then
+    echo 1; return 0
+  fi
+  echo 0
+}
+
 openshift_install_version() {
   # Output like: "openshift-install 4.18.4"
   openshift-install version 2>/dev/null | awk '/^openshift-install[[:space:]]+/ {print $2; exit}'
@@ -48,7 +73,7 @@ latest_openshift_overall() {
 
 check_openshift_installer_is_latest() {
   local cluster_yaml="$1"
-  local desired_version desired_minor latest_overall latest_overall_minor latest_patch local_installer
+  local desired_version desired_minor desired_max_minor latest_overall latest_overall_minor latest_patch local_installer cmp
 
   if is_true "${PREFLIGHT_SKIP_OPENSHIFT_INSTALLER_VERSION_CHECK:-}"; then
     log "Skipping openshift-install version check (PREFLIGHT_SKIP_OPENSHIFT_INSTALLER_VERSION_CHECK=1)"
@@ -57,6 +82,7 @@ check_openshift_installer_is_latest() {
 
   desired_version="$(yq -r '.openshift.version // ""' "${cluster_yaml}")"
   [[ -n "${desired_version}" && "${desired_version}" != "null" ]] || fail "openshift.version not set in ${cluster_yaml}"
+  desired_max_minor="$(yq -r '.openshift.max_minor // ""' "${cluster_yaml}")"
 
   if [[ "${desired_version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     desired_minor="$(printf '%s' "${desired_version}" | awk -F. '{print $1"."$2}')"
@@ -72,8 +98,18 @@ check_openshift_installer_is_latest() {
   latest_overall="$(latest_openshift_overall)" || fail "Could not determine latest OpenShift version from mirror.openshift.com (check network/DNS), or set PREFLIGHT_SKIP_OPENSHIFT_INSTALLER_VERSION_CHECK=1"
   latest_overall_minor="$(printf '%s' "${latest_overall}" | awk -F. '{print $1"."$2}')"
 
-  if [[ "${desired_minor}" != "${latest_overall_minor}" ]]; then
-    fail "openshift.version (${desired_minor}) is not the latest minor (${latest_overall_minor}). Update ${cluster_yaml} to the latest minor, or set PREFLIGHT_SKIP_OPENSHIFT_INSTALLER_VERSION_CHECK=1"
+  if [[ -n "${desired_max_minor}" && "${desired_max_minor}" != "null" ]]; then
+    if [[ ! "${desired_max_minor}" =~ ^[0-9]+\.[0-9]+$ ]]; then
+      fail "openshift.max_minor must be X.Y (got: ${desired_max_minor})"
+    fi
+    cmp="$(compare_minor "${desired_minor}" "${desired_max_minor}")"
+    if [[ "${cmp}" == "1" ]]; then
+      fail "openshift.version (${desired_minor}) exceeds openshift.max_minor (${desired_max_minor}). Bump openshift.max_minor only after validating operator compatibility, or set PREFLIGHT_SKIP_OPENSHIFT_INSTALLER_VERSION_CHECK=1"
+    fi
+  else
+    if [[ "${desired_minor}" != "${latest_overall_minor}" ]]; then
+      fail "openshift.version (${desired_minor}) is not the latest minor (${latest_overall_minor}). Update ${cluster_yaml} to the latest minor, or set openshift.max_minor to intentionally pin, or set PREFLIGHT_SKIP_OPENSHIFT_INSTALLER_VERSION_CHECK=1"
+    fi
   fi
 
   latest_patch="$(latest_openshift_patch_for_minor "${desired_minor}")" || fail "Could not determine latest patch for ${desired_minor} from mirror.openshift.com"
