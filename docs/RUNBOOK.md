@@ -131,6 +131,13 @@ are not automatically replaced.
 
 ### Provisioning commands (AWS)
 
+If the GitOps repo is private, export repo creds before bootstrap:
+
+```bash
+export GITOPS_REPO_USERNAME=<github-username>
+export GITOPS_REPO_PASSWORD=<github-pat>
+```
+
 ```bash
 export CLUSTER=throwaway
 make preflight        CLUSTER=$CLUSTER

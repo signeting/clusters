@@ -13,6 +13,10 @@ You can also set CLUSTER=<cluster> instead of passing an argument.
 
 Optional env:
   GITOPS_REUSE_SRC   Deprecated (gitops-src is reused automatically if it's a clean git repo)
+  GITOPS_REPO_USERNAME   Repo username for Argo CD (required for private repos)
+  GITOPS_REPO_PASSWORD   Repo password/PAT for Argo CD (required for private repos)
+  GITOPS_REPO_PAT        Alias for GITOPS_REPO_PASSWORD
+  GITOPS_REPO_SECRET_NAME  Secret name in openshift-gitops (default: gitops-repo)
 USAGE
 }
 
@@ -230,6 +234,39 @@ wait_for_argocd_available() {
   return 1
 }
 
+ensure_argocd_repo_secret() {
+  local repo_url="$1"
+  local namespace="openshift-gitops"
+  local secret_name="${GITOPS_REPO_SECRET_NAME:-gitops-repo}"
+  local username="${GITOPS_REPO_USERNAME:-}"
+  local password="${GITOPS_REPO_PASSWORD:-${GITOPS_REPO_PAT:-}}"
+
+  if [[ -z "${username}" || -z "${password}" ]]; then
+    if [[ "${repo_url}" == *"github.com/bitiq-io/gitops"* ]]; then
+      fail "Missing GITOPS_REPO_USERNAME/GITOPS_REPO_PASSWORD for private repo ${repo_url}"
+    fi
+    log "No repo credentials provided; skipping Argo CD repo secret creation"
+    return 0
+  fi
+
+  ensure_namespace "${namespace}"
+
+  cat <<YAML | oc apply -f - >/dev/null
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ${secret_name}
+  namespace: ${namespace}
+  labels:
+    argocd.argoproj.io/secret-type: repository
+type: Opaque
+stringData:
+  url: ${repo_url}
+  username: ${username}
+  password: ${password}
+YAML
+}
+
 ensure_gitops_operator_and_argocd_crd() {
   local values_file="${gitops_dir}/charts/bootstrap-operators/values.yaml"
   if [[ ! -f "${values_file}" ]]; then
@@ -347,6 +384,8 @@ YAML
 }
 
 ensure_gitops_operator_and_argocd_crd
+
+ensure_argocd_repo_secret "${gitops_repo}"
 
 log "Running gitops bootstrap (ENV=${gitops_env}, BASE_DOMAIN=${apps_base_domain})"
 (

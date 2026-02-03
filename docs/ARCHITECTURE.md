@@ -62,5 +62,6 @@ All automation flows through `scripts/*.sh`:
 ## GitOps handoff
 
 - Clones `gitops.repo_url` at `gitops.repo_ref` into `clusters/<cluster>/.work/gitops-src/`.
+- If the GitOps repo is private, set `GITOPS_REPO_USERNAME` + `GITOPS_REPO_PASSWORD` so Argo CD can read the repo during bootstrap.
 - Runs `ENV=<gitops.env> BASE_DOMAIN=apps.<cluster>.<dns.base_domain> ./scripts/bootstrap.sh`.
 - Writes a trace file to `clusters/<cluster>/.work/gitops-bootstrap.json`.
