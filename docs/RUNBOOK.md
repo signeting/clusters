@@ -131,8 +131,6 @@ are not automatically replaced.
 
 ### Provisioning commands (AWS)
 
-`clusters/<cluster>/cluster.yaml` controls which GitOps overlay is used via `gitops.env` (`local`, `sno`, `prod`, `prodtest`). Use `prodtest` for ephemeral prod workflow testing; reserve `prod` for real prod.
-
 If the GitOps repo is private, export repo creds before bootstrap:
 
 ```bash
