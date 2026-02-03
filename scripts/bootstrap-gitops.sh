@@ -16,6 +16,7 @@ Optional env:
   GITOPS_REPO_USERNAME   Repo username for Argo CD (required for private repos)
   GITOPS_REPO_PASSWORD   Repo password/PAT for Argo CD (required for private repos)
   GITOPS_REPO_PAT        Alias for GITOPS_REPO_PASSWORD
+  GITOPS_REPO_VAULT_PATH Optional Vault KV path for repo creds (default: gitops/github/gitops-repo)
   GITOPS_REPO_SECRET_NAME  Secret name in openshift-gitops (default: gitops-repo)
   GITOPS_REPO_ACCESS_TIMEOUT Seconds to wait for Argo repo access check (default: 180)
 USAGE
@@ -245,6 +246,34 @@ base64_encode() {
   # Cross-platform: we only need encoding (not decoding). Both GNU coreutils and macOS `base64`
   # emit a trailing newline by default, so strip it.
   printf '%s' "$1" | base64 | tr -d '\n'
+}
+
+load_repo_creds_from_vault() {
+  if [[ -n "${GITOPS_REPO_USERNAME:-}" && -n "${GITOPS_REPO_PASSWORD:-${GITOPS_REPO_PAT:-}}" ]]; then
+    return 0
+  fi
+  if [[ -z "${VAULT_ADDR:-}" || -z "${VAULT_TOKEN:-}" ]]; then
+    return 0
+  fi
+  if ! command -v vault >/dev/null 2>&1; then
+    log "WARN: VAULT_ADDR/VAULT_TOKEN set but vault CLI not found; skipping Vault repo creds lookup"
+    return 0
+  fi
+
+  local vault_path="${GITOPS_REPO_VAULT_PATH:-gitops/github/gitops-repo}"
+  local json username password
+  if ! json="$(vault kv get -format=json "${vault_path}" 2>/dev/null)"; then
+    log "WARN: Unable to read Vault path ${vault_path}; skipping repo creds lookup"
+    return 0
+  fi
+
+  username="$(printf '%s' "${json}" | jq -r '.data.data.username // empty')"
+  password="$(printf '%s' "${json}" | jq -r '.data.data.password // .data.data.token // empty')"
+  if [[ -n "${username}" && -n "${password}" ]]; then
+    export GITOPS_REPO_USERNAME="${username}"
+    export GITOPS_REPO_PASSWORD="${password}"
+    log "Loaded Argo repo creds from Vault path ${vault_path}"
+  fi
 }
 
 ensure_argocd_repo_secret() {
@@ -500,6 +529,7 @@ YAML
 
 ensure_gitops_operator_and_argocd_crd
 
+load_repo_creds_from_vault
 ensure_argocd_repo_secret "${gitops_repo}"
 
 log "Running gitops bootstrap (ENV=${gitops_env}, BASE_DOMAIN=${apps_base_domain})"
