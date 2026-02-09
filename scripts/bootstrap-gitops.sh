@@ -19,6 +19,7 @@ Optional env:
   GITOPS_REPO_VAULT_PATH Optional Vault KV path for repo creds (default: gitops/github/gitops-repo)
   GITOPS_REPO_SECRET_NAME  Secret name in openshift-gitops (default: gitops-repo)
   GITOPS_REPO_ACCESS_TIMEOUT Seconds to wait for Argo repo access check (default: 180)
+  SKIP_VAULT_K8S_AUTH_CONFIG If set to 1/true, skip configuring Vault Kubernetes auth for this cluster even when VAULT_ADDR/VAULT_TOKEN are set
 USAGE
 }
 
@@ -276,6 +277,54 @@ load_repo_creds_from_vault() {
   fi
 }
 
+repo_is_public_without_auth() {
+  local repo_url="$1"
+
+  if [[ ! "${repo_url}" =~ ^https:// ]]; then
+    return 1
+  fi
+
+  # Disable credential helpers so we can detect whether the repo is readable anonymously.
+  # `git ls-remote` is the least invasive check that exercises the same protocol Argo CD uses.
+  GIT_TERMINAL_PROMPT=0 \
+  GIT_ASKPASS=/bin/false \
+    git -c credential.helper= -c credential.useHttpPath=true ls-remote -q --exit-code "${repo_url}" HEAD >/dev/null 2>&1
+}
+
+load_repo_creds_from_git_credential_helper() {
+  local repo_url="$1"
+
+  if [[ -n "${GITOPS_REPO_USERNAME:-}" && -n "${GITOPS_REPO_PASSWORD:-${GITOPS_REPO_PAT:-}}" ]]; then
+    return 0
+  fi
+  if [[ ! "${repo_url}" =~ ^https://([^/]+)/(.+)$ ]]; then
+    return 0
+  fi
+  if ! command -v git >/dev/null 2>&1; then
+    return 0
+  fi
+
+  local host path creds username password
+  host="${BASH_REMATCH[1]}"
+  path="${BASH_REMATCH[2]}"
+
+  # Respect the user's configured credential.helper (osxkeychain, libsecret, etc).
+  # Never print the helper output since it may contain secrets.
+  creds="$(
+    GIT_TERMINAL_PROMPT=0 \
+      printf 'protocol=https\nhost=%s\npath=%s\n\n' "${host}" "${path}" | git credential fill 2>/dev/null || true
+  )"
+
+  username="$(printf '%s\n' "${creds}" | awk -F= '/^username=/{print $2; exit}')"
+  password="$(printf '%s\n' "${creds}" | awk -F= '/^password=/{print $2; exit}')"
+
+  if [[ -n "${username}" && -n "${password}" ]]; then
+    export GITOPS_REPO_USERNAME="${username}"
+    export GITOPS_REPO_PASSWORD="${password}"
+    log "Loaded Argo repo creds from git credential helper for host ${host}"
+  fi
+}
+
 ensure_argocd_repo_secret() {
   local repo_url="$1"
   local namespace="openshift-gitops"
@@ -303,8 +352,12 @@ ensure_argocd_repo_secret() {
     log "Updating Argo CD repo secret: ${namespace}/${secret_name}"
   else
     if [[ -z "${username}" || -z "${password}" ]]; then
-      log "WARN: No repo credentials provided and ${namespace}/${secret_name} does not exist; Argo CD may not be able to read ${repo_url} if it's private."
-      return 0
+      if repo_is_public_without_auth "${repo_url}"; then
+        log "Repo appears publicly readable; skipping Argo CD repo secret creation for ${repo_url}"
+        return 0
+      fi
+
+      fail "Missing Argo repo creds for ${repo_url}. Set GITOPS_REPO_USERNAME/GITOPS_REPO_PASSWORD (or GITOPS_REPO_PAT), store them in Vault (${GITOPS_REPO_VAULT_PATH:-gitops/github/gitops-repo}), or configure a git credential helper (e.g. osxkeychain) to supply them."
     fi
 
     log "Creating Argo CD repo secret: ${namespace}/${secret_name}"
@@ -529,7 +582,18 @@ YAML
 
 ensure_gitops_operator_and_argocd_crd
 
+if [[ -n "${VAULT_ADDR:-}" && -n "${VAULT_TOKEN:-}" ]]; then
+  if [[ "${SKIP_VAULT_K8S_AUTH_CONFIG:-}" != "1" && "${SKIP_VAULT_K8S_AUTH_CONFIG:-}" != "true" ]]; then
+    command -v vault >/dev/null 2>&1 || fail "VAULT_ADDR/VAULT_TOKEN are set but vault CLI is not installed (required for Vault k8s auth config)"
+    log "Configuring Vault Kubernetes auth for this cluster (set SKIP_VAULT_K8S_AUTH_CONFIG=1 to skip)"
+    "${script_dir}/vault-k8s-auth-config.sh" "${CLUSTER}"
+  else
+    log "Skipping Vault Kubernetes auth config (SKIP_VAULT_K8S_AUTH_CONFIG=1)"
+  fi
+fi
+
 load_repo_creds_from_vault
+load_repo_creds_from_git_credential_helper "${gitops_repo}"
 ensure_argocd_repo_secret "${gitops_repo}"
 
 log "Running gitops bootstrap (ENV=${gitops_env}, BASE_DOMAIN=${apps_base_domain})"

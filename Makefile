@@ -1,7 +1,7 @@
 SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := help
 
-.PHONY: help preflight validate quotas quotas-all tf-bootstrap tf-apply tf-destroy cco-manual-sts cluster-create cluster-destroy cleanup-check bootstrap-gitops spot-workers verify
+.PHONY: help preflight validate quotas quotas-all tf-bootstrap tf-apply tf-destroy cco-manual-sts cluster-create cluster-destroy cleanup-check vault-k8s-auth bootstrap-gitops spot-workers verify
 
 help:
 	@printf "Usage: make <target> CLUSTER=<name>\n\n"
@@ -17,6 +17,7 @@ help:
 	@printf "  cluster-create   Create cluster via openshift-install\n"
 	@printf "  cluster-destroy  Destroy cluster via openshift-install\n"
 	@printf "  cleanup-check    Report remaining AWS resources tagged to the cluster\n"
+	@printf "  vault-k8s-auth   Configure external Vault Kubernetes auth for the cluster\n"
 	@printf "  bootstrap-gitops Run GitOps bootstrap on the cluster\n"
 	@printf "  spot-workers     Convert/scale worker MachineSets to Spot (AWS)\n"
 	@printf "  verify           Verify cluster and GitOps health\n"
@@ -55,6 +56,9 @@ cluster-destroy:
 
 cleanup-check:
 	scripts/aws-cleanup-check.sh
+
+vault-k8s-auth:
+	scripts/vault-k8s-auth-config.sh
 
 bootstrap-gitops:
 	scripts/bootstrap-gitops.sh

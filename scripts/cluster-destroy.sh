@@ -53,7 +53,11 @@ installer_dir="${cluster_dir}/.work/installer"
 trace_file="${work_dir}/gitops-bootstrap.json"
 kubeconfig="${work_dir}/kubeconfig"
 
-PREFLIGHT_SKIP_SECRETS=1 "${script_dir}/preflight.sh" "${CLUSTER}"
+# Destroy should never be blocked on "latest installer" checks; it only requires
+# that openshift-install exists and that AWS account guardrails pass.
+PREFLIGHT_SKIP_SECRETS=1 \
+PREFLIGHT_SKIP_OPENSHIFT_INSTALLER_VERSION_CHECK=1 \
+  "${script_dir}/preflight.sh" "${CLUSTER}"
 
 base_domain="$(yq -r '.dns.base_domain' "${cluster_yaml}")"
 hosted_zone_id="$(yq -r '.dns.hosted_zone_id // ""' "${cluster_yaml}")"

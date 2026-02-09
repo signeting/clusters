@@ -29,9 +29,13 @@ Scope: Day-0 provisioning and Day-1 GitOps handoff only.
    - Wait for propagation and confirm `dig NS <dns.base_domain>` returns the expected name servers.
 7. Create the cluster
    - `make cluster-create CLUSTER=<cluster>`
-8. Handoff to GitOps
+8. Configure external Vault auth (only if using external Vault)
+   - Required for VCO/VSO to authenticate on fresh clusters.
+   - `VAULT_ADDR=https://vault.bitiq.io:8200 VAULT_TOKEN=... make vault-k8s-auth CLUSTER=<cluster>`
+   - Note: Vault Kubernetes auth config is cluster-specific. If you have multiple clusters simultaneously, use separate auth mounts per cluster/env and ensure the GitOps repo is configured to use the matching mount.
+9. Handoff to GitOps
    - `make bootstrap-gitops CLUSTER=<cluster>`
-9. Verify
+10. Verify
    - `make verify CLUSTER=<cluster>`
 
 ## Access and URLs

@@ -37,6 +37,11 @@ export KUBECONFIG="${kubeconfig}"
 oc whoami >/dev/null 2>&1 || fail "oc not authenticated (check kubeconfig)"
 oc api-resources >/dev/null 2>&1 || fail "oc cannot reach the cluster"
 
+has_crd() {
+  local crd="$1"
+  oc get crd "${crd}" >/dev/null 2>&1
+}
+
 nodes_json="$(oc get nodes -o json)"
 total_nodes="$(printf '%s' "${nodes_json}" | jq '.items | length')"
 not_ready_nodes="$(printf '%s' "${nodes_json}" | jq -r '.items[] | select((.status.conditions // []) | map(select(.type=="Ready" and .status=="True")) | length == 0) | .metadata.name')"
@@ -59,9 +64,64 @@ if [[ -n "${degraded_ops}" ]]; then
   fail "Degraded clusteroperators: ${degraded_ops}"
 fi
 
+infra_id="$(oc get infrastructure cluster -o jsonpath='{.status.infrastructureName}' 2>/dev/null || true)"
+if [[ -n "${infra_id}" ]]; then
+  if ! ms_json="$(oc -n openshift-machine-api get machinesets -o json 2>/dev/null)"; then
+    fail "Failed to list MachineSets in openshift-machine-api"
+  fi
+  mismatched_ms="$(printf '%s' "${ms_json}" | jq -r --arg infra "${infra_id}" '
+    .items[]
+    | select((.metadata.labels["machine.openshift.io/cluster-api-cluster"] // "") != $infra)
+    | "\(.metadata.name) (cluster-api-cluster=\(.metadata.labels["machine.openshift.io/cluster-api-cluster"] // "missing"))"
+  ')"
+  if [[ -n "${mismatched_ms}" ]]; then
+    fail "MachineSets with mismatched infraID (expected ${infra_id}): ${mismatched_ms//$'\n'/ | }"
+  fi
+fi
+
 if [[ -f "${gitops_trace}" ]]; then
   oc get ns openshift-gitops >/dev/null 2>&1 || fail "openshift-gitops namespace missing"
   log "GitOps namespace detected"
+
+  gitops_repo="$(jq -r '.repo_url // empty' "${gitops_trace}")"
+  if [[ -n "${gitops_repo}" ]] && has_crd applications.argoproj.io; then
+    if ! apps_json="$(oc -n openshift-gitops get applications.argoproj.io -o json 2>/dev/null)"; then
+      fail "Failed to list Argo CD Applications in openshift-gitops"
+    fi
+    repo_errors="$(printf '%s' "${apps_json}" | jq -r --arg url "${gitops_repo}" '
+      .items[]
+      | select(
+          ((.spec.source.repoURL? // "") == $url) or
+          ([.spec.sources[]?.repoURL] | index($url) != null)
+        )
+      | (.status.conditions // [])
+      | map(select(
+          (.type // "" | test("ComparisonError|InvalidSpecError|RepoError"; "i")) or
+          (.message // "" | test("repository not found|authentication required|permission denied|unable to (connect|list)|no basic auth credentials|status code: (401|403)"; "i"))
+        ))
+      | .[]
+      | "\(.type): \(.message)"
+    ' 2>/dev/null || true)"
+    if [[ -n "${repo_errors}" ]]; then
+      fail "Argo CD repo access errors for ${gitops_repo}: ${repo_errors//$'\n'/ | }"
+    fi
+  fi
+
+  if has_crd vaultstaticsecrets.secrets.hashicorp.com; then
+    if ! vss_json="$(oc get vaultstaticsecrets.secrets.hashicorp.com -A -o json 2>/dev/null)"; then
+      fail "Failed to list VaultStaticSecret resources"
+    fi
+    vss_errors="$(printf '%s' "${vss_json}" | jq -r '
+      .items[]
+      | . as $vss
+      | ($vss.status.conditions // [])[]
+      | select((.type=="SecretSynced" or .type=="Ready") and (.status!="True"))
+      | "\($vss.metadata.namespace)/\($vss.metadata.name): \(.type)=\(.status) \(.message // "")"
+    ' 2>/dev/null || true)"
+    if [[ -n "${vss_errors}" ]]; then
+      fail "VaultStaticSecret sync failures (configure Vault k8s auth via 'make vault-k8s-auth CLUSTER=${CLUSTER}' if you see auth/kubernetes/login 403): ${vss_errors//$'\n'/ | }"
+    fi
+  fi
 else
   log "GitOps bootstrap trace not found; skipping namespace check"
 fi

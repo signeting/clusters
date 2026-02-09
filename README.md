@@ -108,6 +108,10 @@ make quotas           CLUSTER=$CLUSTER   # EC2 vCPU quota/usage sanity-check
 make tf-bootstrap     CLUSTER=$CLUSTER   # one-time per AWS account (state bucket)
 make tf-apply         CLUSTER=$CLUSTER   # DNS + IAM prereqs
 make cluster-create   CLUSTER=$CLUSTER   # openshift-install create cluster
+# If GitOps uses external Vault (VCO/VSO), configure the Vault k8s auth mount for this cluster:
+export VAULT_ADDR=https://vault.bitiq.io:8200
+export VAULT_TOKEN=<vault-admin-token>
+make vault-k8s-auth   CLUSTER=$CLUSTER
 make bootstrap-gitops CLUSTER=$CLUSTER   # runs gitops/scripts/bootstrap.sh
 make verify           CLUSTER=$CLUSTER
 ```
@@ -342,6 +346,7 @@ MVP uses `cco_mode: mint` for simplicity. `manual-sts` is available as a prototy
 | `make tf-destroy` | destroy per cluster: DNS + IAM prereqs (preserves hosted zone by default) |
 | `make cco-manual-sts` | prepare AWS STS IAM/OIDC resources (manual CCO mode) |
 | `make cluster-create` | create OCP cluster via `openshift-install` |
+| `make vault-k8s-auth` | configure external Vault Kubernetes auth for the cluster (VCO/VSO) |
 | `make bootstrap-gitops` | call `bitiq-io/gitops/scripts/bootstrap.sh` |
 | `make spot-workers` | patch/scale worker MachineSets to Spot (AWS) |
 | `make verify` | health checks (nodes, operators, gitops) |
