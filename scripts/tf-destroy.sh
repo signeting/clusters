@@ -41,7 +41,10 @@ work_dir="${cluster_dir}/.work"
 [[ -f "${cluster_yaml}" ]] || fail "Missing ${cluster_yaml}"
 [[ -d "${tf_dir}" ]] || fail "Missing ${tf_dir}"
 
-PREFLIGHT_SKIP_SECRETS=1 "${script_dir}/preflight.sh" "${CLUSTER}"
+# Terraform prereqs destroy does not depend on openshift-install version; keep account guardrails only.
+PREFLIGHT_SKIP_SECRETS=1 \
+PREFLIGHT_SKIP_OPENSHIFT_INSTALLER_VERSION_CHECK=1 \
+  "${script_dir}/preflight.sh" "${CLUSTER}"
 
 account_id="$(yq -r '.platform.account_id' "${cluster_yaml}")"
 region="$(yq -r '.platform.region' "${cluster_yaml}")"

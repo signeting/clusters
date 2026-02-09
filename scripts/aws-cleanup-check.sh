@@ -37,7 +37,10 @@ infra_id_file="${cluster_dir}/.work/infraID"
 
 [[ -f "${cluster_yaml}" ]] || fail "Missing ${cluster_yaml}"
 
-PREFLIGHT_SKIP_SECRETS=1 "${script_dir}/preflight.sh" "${CLUSTER}"
+# Cleanup reporting must not be blocked on installer version checks.
+PREFLIGHT_SKIP_SECRETS=1 \
+PREFLIGHT_SKIP_OPENSHIFT_INSTALLER_VERSION_CHECK=1 \
+  "${script_dir}/preflight.sh" "${CLUSTER}"
 
 region="$(yq -r '.platform.region' "${cluster_yaml}")"
 aws_profile="$(yq -r '.credentials.aws_profile // ""' "${cluster_yaml}")"
