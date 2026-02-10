@@ -35,6 +35,9 @@ Scope: Day-0 provisioning and Day-1 GitOps handoff only.
    - Note: Vault Kubernetes auth config is cluster-specific. If you have multiple clusters simultaneously, use separate auth mounts per cluster/env and ensure the GitOps repo is configured to use the matching mount.
 9. Handoff to GitOps
    - `make bootstrap-gitops CLUSTER=<cluster>`
+   - Canonical workflow: run bootstrap from this repo via `make bootstrap-gitops` / `scripts/bootstrap-gitops.sh` (even if you are actively developing in `bitiq-io/gitops`).
+   - Reason: it derives `ENV`/`BASE_DOMAIN` from `clusters/<cluster>/cluster.yaml`, configures Vault Kubernetes auth (when `VAULT_ADDR`/`VAULT_TOKEN` are set), sets up Argo repo credentials, and writes a trace file under `clusters/<cluster>/.work/`.
+   - Running `bitiq-io/gitops/scripts/bootstrap.sh` directly is supported for debugging, but it is not the canonical path.
 10. Verify
    - `make verify CLUSTER=<cluster>`
 

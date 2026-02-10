@@ -65,3 +65,4 @@ All automation flows through `scripts/*.sh`:
 - If the GitOps repo is private, set `GITOPS_REPO_USERNAME` + `GITOPS_REPO_PASSWORD` so Argo CD can read the repo during bootstrap.
 - Runs `ENV=<gitops.env> BASE_DOMAIN=apps.<cluster>.<dns.base_domain> ./scripts/bootstrap.sh`.
 - Writes a trace file to `clusters/<cluster>/.work/gitops-bootstrap.json`.
+- Canonical entrypoint is `make bootstrap-gitops` (this repo). Running the GitOps repo script directly is for debugging only to avoid workflow drift.

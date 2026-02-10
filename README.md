@@ -13,7 +13,7 @@ This repo creates/destroys OpenShift clusters (starting with AWS) and then boots
 | Cloud prerequisites (DNS, IAM, state backends) | ✅ | ❌ |
 | Cluster lifecycle (create/destroy) | ✅ | ❌ |
 | Installing OpenShift (AWS IPI via `openshift-install`) | ✅ | ❌ |
-| Bootstrap GitOps onto a fresh cluster | ✅ | ✅ (via `scripts/bootstrap.sh`) |
+| Bootstrap GitOps onto a fresh cluster | ✅ (canonical entrypoint) | ✅ (implementation: `scripts/bootstrap.sh`) |
 | Node pools (MachineSets, labels/taints, autoscaling) | ⚠️ bootstrap-only | ✅ |
 | Operators, namespaces, policies, workloads | ❌ | ✅ |
 | Day‑2 ops (rollouts, upgrades, drift control) | ❌ | ✅ |
@@ -115,6 +115,10 @@ make vault-k8s-auth   CLUSTER=$CLUSTER
 make bootstrap-gitops CLUSTER=$CLUSTER   # runs gitops/scripts/bootstrap.sh
 make verify           CLUSTER=$CLUSTER
 ```
+
+Bootstrap is intentionally driven from this repo even if you are actively developing in `bitiq-io/gitops`.
+Reason: `make bootstrap-gitops` is the stable, reviewable interface that derives inputs from `clusters/<cluster>/cluster.yaml`,
+configures Vault Kubernetes auth when requested, sets up Argo repo credentials, and writes a trace file under `clusters/<cluster>/.work/`.
 
 ### 6) Use the cluster
 
@@ -370,8 +374,9 @@ For a cloud-agnostic workflow with provider-specific sections, see:
 - **“Wrong AWS account”**: set `AWS_PROFILE=signet` and rerun `make preflight`.
 - **DNS doesn’t resolve yet**: hosted zone delegation can take time; verify NS records.
 - **Installer failed mid-run**: run `make cluster-destroy`, fix the cause, retry.
-- **GitOps bootstrap fails**: confirm `gitops/scripts/bootstrap.sh` runs manually with:
-  `ENV=prod BASE_DOMAIN=apps.<cluster>.<base_domain> ./scripts/bootstrap.sh`
+- **GitOps bootstrap fails**: rerun `make bootstrap-gitops` and review `clusters/<cluster>/.work/gitops-bootstrap.json` (if it got far enough to write).
+- **Debugging only**: you can run the underlying GitOps bootstrap script directly from the cloned workdir:
+  `cd clusters/<cluster>/.work/gitops-src && KUBECONFIG=../kubeconfig ENV=<gitops.env> BASE_DOMAIN=apps.<cluster>.<dns.base_domain> ./scripts/bootstrap.sh`
 
 More in `docs/TROUBLESHOOTING.md`.
 
