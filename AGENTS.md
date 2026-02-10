@@ -43,17 +43,17 @@ Purpose: Guide AI/dev assistants working in this repo (Day-0 cluster provisionin
   - Major: breaking changes to `cluster.yaml` schema, Make targets, or workflow contracts.
   - Minor: new capabilities or provider support that do not break existing flows.
   - Patch: fixes, maintenance, and doc-only changes.
-- Keep branches and PRs single-purpose; avoid mixing unrelated changes.
+- Keep commits single-purpose; avoid mixing unrelated changes. Default workflow is direct commits to `main` (no PR required).
 
-## Branch Naming
+## Branch Naming (optional)
 
-- Use short, purpose-focused names: `docs/...`, `feat/...`, `fix/...`, `chore/...`, `ci/...`.
+- If you do use branches, use short, purpose-focused names: `docs/...`, `feat/...`, `fix/...`, `chore/...`, `ci/...`.
 - Include scope if helpful: `feat/scripts-preflight`, `fix/aws-prereqs`.
 
 ## Remote Sync (best practice)
 
-- Pull or fetch/rebase before starting work to avoid diverging histories.
-- Do not force-push to shared branches (`main`); open a PR or coordinate first.
+- Pull (prefer `--ff-only`) or fetch/rebase before starting work to avoid diverging histories.
+- Do not force-push to shared branches (`main`). Default workflow is direct pushes to `main`; coordinate if multiple people are pushing concurrently.
 - Keep local `main` in sync with `origin/main` before tagging releases.
 
 ## Release Checklist (lightweight)

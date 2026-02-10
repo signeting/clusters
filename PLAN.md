@@ -368,7 +368,7 @@ Also gitignored.
   - schema validation for example clusters
 
 **DoD:**
-- PRs fail fast on formatting/validation errors.
+- CI fails fast on formatting/validation errors (push + PR).
 
 **Status:** done
 
