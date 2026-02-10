@@ -12,8 +12,8 @@ dns:
   hosted_zone_id: "Z05328121MXHZ34TJLQJB"
 
 openshift:
-  # Pin prod to a known-good OpenShift patch; bump intentionally after validating operator compatibility.
-  version: "4.20.13"
+  # Pin prod to a known-good OpenShift minor; preflight enforces the latest patch in that minor.
+  version: "4.20"
   max_minor: "4.20"
   control_plane_replicas: 3
   compute_market: on-demand
