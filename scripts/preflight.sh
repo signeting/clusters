@@ -38,7 +38,8 @@ compare_minor() {
 
 openshift_install_version() {
   # Output like: "openshift-install 4.18.4"
-  openshift-install version 2>/dev/null | awk '/^openshift-install[[:space:]]+/ {print $2; exit}'
+  # Avoid SIGPIPE under `set -o pipefail` by not exiting early in the reader.
+  openshift-install version 2>/dev/null | awk 'NR==1 {print $2}'
 }
 
 latest_openshift_patch_for_minor() {
