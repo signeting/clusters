@@ -43,4 +43,6 @@ jobs:
           terraform -chdir=platforms/aws/terraform/prereqs validate
 
       - name: Schema validation
-        run: scripts/validate.sh _example/aws-single-az
+        run: |
+          scripts/validate.sh _example/aws-multi-az
+          scripts/validate.sh _example/aws-single-az

@@ -1,0 +1,31 @@
+name: example-aws-multi-az
+env: prod
+
+platform:
+  type: aws
+  account_id: "153526447089"
+  region: us-west-2
+  zones: ["us-west-2a", "us-west-2b", "us-west-2c"]
+
+dns:
+  base_domain: aws.ocp.signet.ing
+  # hosted_zone_id: "Z123..."
+
+openshift:
+  version: "4.20"
+  control_plane_replicas: 3
+  compute_replicas: 3
+  instance_type_control_plane: m6i.large
+  instance_type_compute: m6i.xlarge
+
+credentials:
+  aws_profile: signet
+  cco_mode: mint
+
+gitops:
+  repo_url: "https://github.com/bitiq-io/gitops.git"
+  repo_ref: "main"
+  env: prod
+  # NOTE: For private GitOps repos, export:
+  #   GITOPS_REPO_USERNAME=<github-username>
+  #   GITOPS_REPO_PASSWORD=<github-pat>

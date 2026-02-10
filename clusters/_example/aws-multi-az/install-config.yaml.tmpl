@@ -1,0 +1,25 @@
+# Template placeholders are replaced by scripts/render-install-config.sh
+apiVersion: v1
+baseDomain: __BASE_DOMAIN__
+metadata:
+  name: __CLUSTER_NAME__
+credentialsMode: __CREDENTIALS_MODE__
+compute:
+- name: worker
+  replicas: __COMPUTE_REPLICAS__
+  platform:
+    aws:
+      type: __INSTANCE_TYPE_COMPUTE__
+      zones: __AWS_ZONES__
+controlPlane:
+  name: master
+  replicas: __CONTROL_PLANE_REPLICAS__
+  platform:
+    aws:
+      type: __INSTANCE_TYPE_CONTROL_PLANE__
+      zones: __AWS_ZONES__
+platform:
+  aws:
+    region: __AWS_REGION__
+pullSecret: '__PULL_SECRET__'
+sshKey: '__SSH_PUB_KEY__'

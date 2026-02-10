@@ -77,8 +77,10 @@ If this prints a different account, stop. Fix your AWS profile before proceeding
 Copy the example:
 
 ```bash
-cp -r clusters/_example/aws-single-az clusters/signet-aws-prod
+cp -r clusters/_example/aws-multi-az clusters/signet-aws-prod
 ```
+
+For cheap throwaway/dev clusters, start from `clusters/_example/aws-single-az/` instead.
 
 Edit:
 
@@ -217,6 +219,9 @@ flowchart TB
 .
 ├── clusters/
 │   ├── _example/
+│   │   ├── aws-multi-az/
+│   │   │   ├── cluster.yaml
+│   │   │   └── install-config.yaml.tmpl
 │   │   └── aws-single-az/
 │   │       ├── cluster.yaml
 │   │       └── install-config.yaml.tmpl
@@ -258,7 +263,7 @@ flowchart TB
 
 `clusters/<name>/cluster.yaml` is the **single source of truth** for cluster intent.
 
-Example (AWS, single-AZ):
+Example (AWS, multi-AZ):
 
 ```yaml
 name: signet-aws-prod
@@ -268,7 +273,7 @@ platform:
   type: aws
   account_id: "153526447089"
   region: us-west-2
-  zones: ["us-west-2a"]  # single AZ default to avoid cross-AZ transfer costs
+  zones: ["us-west-2a", "us-west-2b", "us-west-2c"]  # multi-AZ recommended for prod; use 1 zone for cheap dev/throwaway
 
 dns:
   # We recommend delegating a per-cloud subdomain (e.g. aws.ocp.signet.ing) for portability.
@@ -313,9 +318,11 @@ This repo is designed to prevent expensive mistakes:
 
 ### Single-AZ vs multi-AZ
 
-We default to **single-AZ** for cost control. Multi-AZ costs often show up as cross-AZ data transfer (control plane replication + service traffic + app chatter). When uptime needs win over cost, switch to multi-AZ by setting multiple zones in `cluster.yaml`.
+For **production**, prefer **multi-AZ** so cluster topology matches HA service design and can tolerate an AZ outage. Single-AZ is still useful for cheap dev/throwaway clusters.
 
-GPU capacity exception: AWS GPU instance capacity can be constrained in a single AZ. In that case, keep `cluster.yaml` single-AZ for baseline control plane/workers, but add GPU-only private subnets in additional AZs and manage GPU MachineSets in GitOps (`bitiq-io/gitops`). This preserves the single-AZ cost profile for baseline workloads while allowing GPU capacity to scale, at the cost of cross-AZ traffic (NAT egress and control-plane chatter).
+Multi-AZ costs often show up as cross-AZ data transfer, but the biggest surprises are usually driven by *workload behavior* (chatty east-west traffic) and replicated storage patterns (e.g. OpenShift Data Foundation / ODF), not just the control plane.
+
+GPU capacity note: AWS GPU instance capacity can be AZ-specific. If you’re intentionally keeping a mostly single-AZ footprint but need GPUs elsewhere, you can add GPU-only subnets/MachineSets in additional AZs (GitOps-managed), at the cost of cross-AZ traffic (NAT egress and control-plane/service chatter).
 
 ### DNS
 

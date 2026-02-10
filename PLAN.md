@@ -152,11 +152,12 @@ Also gitignored.
 **Why:** Humans need a “copy this and edit” path.
 
 **Work:**
-- Add `clusters/_example/aws-single-az/cluster.yaml`
-- Add matching `install-config.yaml.tmpl`
+- Add `clusters/_example/aws-multi-az/cluster.yaml` (recommended baseline)
+- Add `clusters/_example/aws-single-az/cluster.yaml` (cheap dev/throwaway option)
+- Add matching `install-config.yaml.tmpl` (shared)
 
 **DoD:**
-- `cp -r clusters/_example/aws-single-az clusters/test` is a working start.
+- `cp -r clusters/_example/aws-multi-az clusters/test` is a working start (or `aws-single-az` for cheap throwaway).
 
 **Status:** done
 

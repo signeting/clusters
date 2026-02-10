@@ -12,7 +12,7 @@ Scope: Day-0 provisioning and Day-1 GitOps handoff only.
 ## Common workflow (all clouds)
 
 1. Create a cluster definition
-   - Copy the provider example under `clusters/_example/`.
+   - Copy the provider example under `clusters/_example/` (AWS: use `aws-multi-az` for prod, `aws-single-az` for cheap throwaway/dev).
    - Edit `clusters/<cluster>/cluster.yaml`.
 2. Add secrets
    - Place the pull secret JSON and SSH public key under `secrets/<cluster>/`.
@@ -134,7 +134,7 @@ are not automatically replaced.
 - Additional/specialized pools (GPU, infra, storage) and their scheduling policy (labels/taints) should be managed in `bitiq-io/gitops` so Argo CD can reconcile drift.
 - MachineSets are cluster-specific (they embed the installer `infraID`); template/inject `infraID` during GitOps bootstrap and be cautious with Argo CD prune on capacity resources.
 - Before applying GitOps changes that add/scale new instance families (especially GPU), run `make quotas CLUSTER=<cluster>` to confirm EC2 quota headroom.
-- GPU capacity exception: if GPU capacity is constrained in the primary AZ, keep baseline workers single-AZ but add GPU-only private subnets in additional AZs and create GPU MachineSets there (GitOps-managed). This avoids a full multi-AZ footprint while allowing GPU scale-out, at the cost of cross-AZ NAT/control-plane traffic.
+- GPU capacity note: AWS GPU instance capacity can be AZ-specific. If you’re intentionally running single-AZ for cost but need GPUs elsewhere, keep baseline pools in one AZ and add GPU-only private subnets/MachineSets in additional AZs (GitOps-managed), at the cost of cross-AZ traffic (NAT/control-plane/service chatter).
 
 ### Provisioning commands (AWS)
 
